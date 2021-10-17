@@ -1,0 +1,20 @@
+{application, aoc_erlang,
+ [{description, "AdventOfCode solutions in Erlang"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, []},
+  {applications,
+   [kernel,
+    stdlib,
+    common_test,
+    eunit,
+    jsone,
+    tools,
+    redbug,
+    parsetools
+   ]},
+  {modules, []},
+  {maintainers, []},
+  {licenses, ["Apache 2.0"]},
+  {links, []}
+ ]}.
