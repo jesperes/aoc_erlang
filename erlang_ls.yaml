@@ -1,0 +1,18 @@
+# -*- yaml -*-
+
+macros:
+  - name: APPLICATION
+  - name: NIF_DIR
+
+plt_path: _build/default/rebar3_24.0.6_plt
+# plt_path: _build/default/rebar3_23.3.4.2_plt
+# plt_path: _build/default/rebar3_22.3.4.20_plt
+
+include_dirs:
+  - "include"
+  - "src"
+
+lenses:
+  disabled:
+    - function-references
+    #- suggest-spec

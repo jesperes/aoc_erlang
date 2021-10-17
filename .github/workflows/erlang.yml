@@ -1,0 +1,33 @@
+name: erlang
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+    name: OTP ${{matrix.otp}}
+    strategy:
+      matrix:
+         otp: ["22", "23", "24", "latest"]
+
+    container:
+      image: erlang:${{matrix.otp}}
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Compile
+      run: "cd aoc_erlang && rebar3 compile"
+    - name: Find unused code
+      run: "cd aoc_erlang && rebar3 hank"
+    - name: XRef
+      run: "cd aoc_erlang && rebar3 xref"
+    - name: Dialyzer
+      run: "cd aoc_erlang && rebar3 dialyzer"
+    - name: Solve puzzles
+      run: "cd aoc_erlang && rebar3 eunit -m aoc_eunit"

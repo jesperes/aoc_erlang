@@ -1,0 +1,10 @@
+%% -*- erlang -*-
+
+NifDir = filename:absname(
+           filename:join(
+             filename:dirname(SCRIPT), "c_src")).
+
+lists:keystore(erl_opts, 1, CONFIG,
+               {erl_opts,
+                proplists:get_value(erl_opts, CONFIG)
+                ++ [{d, 'NIF_DIR', NifDir}]}).
