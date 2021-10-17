@@ -1,5 +1,7 @@
 # Advent of Code solutions in Erlang
 
+![Build Status](https://github.com/jesperes/aoc_erlang/workflows/erlang/badge.svg)
+
 To run all solutions in order, do
 
 ```erlang
