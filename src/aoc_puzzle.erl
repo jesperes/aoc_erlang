@@ -5,6 +5,7 @@
 -include("aoc_puzzle.hrl").
 
 -include_lib("stdlib/include/assert.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 -export([info/1, parse/2, solve/2, solve1/2, solve2/2, run_puzzle/1, read_input/1,
          mktest/1, label/1]).
@@ -52,9 +53,23 @@ read_input(Info) ->
             <<>>
     end.
 
+% -define(DETAILED_TIMING, true).
+
+-ifdef(DETAILED_TIMING).
+
+run_puzzle(Info) ->
+    {TInput, Input} = timer:tc(fun() -> read_input(Info) end),
+    {TPuzzle, Value} = timer:tc(fun() -> run_puzzle(Info, Input) end),
+    ?debugFmt("~p: ~p+~p = ~p usecs", [label(Info), TInput, TPuzzle, TInput + TPuzzle]),
+    Value.
+
+-else.
+
 run_puzzle(Info) ->
     Input = read_input(Info),
     run_puzzle(Info, Input).
+
+-endif.
 
 run_puzzle(Info, Input) ->
     M = Info#aoc_puzzle.module,
@@ -86,4 +101,5 @@ mktest(Info) ->
 label(Info) ->
     Year = Info#aoc_puzzle.year,
     Day = Info#aoc_puzzle.day,
-    lists:flatten(io_lib:format("~w Day ~2..0w: ~s", [Year, Day, Info#aoc_puzzle.name])).
+    lists:flatten(
+        io_lib:format("~w Day ~2..0w: ~s", [Year, Day, Info#aoc_puzzle.name])).
