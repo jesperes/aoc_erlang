@@ -51,27 +51,3 @@ swallow_garbage([$!, _ | G], Garbage) ->
     swallow_garbage(G, Garbage);
 swallow_garbage([_ | G], Garbage) ->
     swallow_garbage(G, Garbage + 1).
-
--include_lib("eunit/include/eunit.hrl").
-
--ifdef(TEST).
-
-group_score_test() ->
-    % ?assertEqual(1, group_score("{}")),
-    % ?assertEqual(6, group_score("{{{}}}")),
-    % ?assertEqual(5, group_score("{{},{}}")),
-    % ?assertEqual(16, group_score("{{{},{},{{}}}}")),
-    % ?assertEqual(9, group_score("{{<ab>},{<ab>},{<ab>},{<ab>}}")),
-    % ?assertEqual(3, group_score("{{<a!>},{<a!>},{<a!>},{<ab>}}")).
-    ?assertMatch({_, 10}, group_score("<{o\"i!a,<{i<a>")),
-    ?assertMatch({_, 0}, group_score("<!!!>>")),
-    ?assertMatch({_, 3}, group_score("<<<<>")),
-    ?assertMatch({_, 2}, group_score("<{!>}>")).
-
--endif.
-
-%%%_* Emacs ====================================================================
-%%% Local Variables:
-%%% allout-layout: t
-%%% erlang-indent-level: 4
-%%% End:
