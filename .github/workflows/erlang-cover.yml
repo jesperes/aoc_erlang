@@ -1,0 +1,21 @@
+name: erlang-cover
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: erlang:24
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run unit tests with code coverage
+      run: "rebar3 eunit --cover"
+    - name: Generate coverage report
+      run: "rebar3 cover"
