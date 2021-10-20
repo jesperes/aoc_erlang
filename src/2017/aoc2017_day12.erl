@@ -18,7 +18,7 @@ info() ->
                 use_one_solver_fun = true,
                 has_input_file = true}.
 
--type input_type() :: [{integer(), [integer()]}].
+-type input_type() :: [[string(), ...]].
 -type result_type() :: {integer(), integer()}.
 
 -spec parse(Binary :: binary()) -> input_type().
