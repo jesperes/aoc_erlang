@@ -1,6 +1,6 @@
 # Advent of Code solutions in Erlang
 
-![Build Status](https://github.com/jesperes/aoc_erlang/workflows/erlang/badge.svg)
+[![erlang-cover](https://github.com/jesperes/aoc_erlang/actions/workflows/erlang-cover.yml/badge.svg)](https://github.com/jesperes/aoc_erlang/actions/workflows/erlang-cover.yml)
 
 To run all solutions in order, do
 
