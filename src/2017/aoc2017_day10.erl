@@ -2,8 +2,15 @@
 
 -behavior(aoc_puzzle).
 
--export([parse/1, solve1/1, solve2/1, info/0]).
--export([knot_hash/4]).
+-export([ parse/1
+        , solve1/1
+        , solve2/1
+        , info/0
+        ]).
+
+%% Used in later puzzles
+-export([ knot_hash/1
+        ]).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -35,15 +42,20 @@ solve1(Input) ->
 
 -spec solve2(Input :: input_type()) -> result2_type().
 solve2(Input) ->
+    knot_hash(Input).
+
+%% Helpers
+
+-spec knot_hash(string()) -> string().
+knot_hash(String) ->
     Suffix = [17, 31, 73, 47, 23],
-    Lengths = Input ++ Suffix,
+    Lengths = String ++ Suffix,
     {SparseHash, _, _} =
         lists:foldl(fun(_, {List, Pos, SkipSize}) -> knot_hash(Lengths, List, Pos, SkipSize) end,
                     {lists:seq(0, 255), 0, 0},
                     lists:seq(1, 64)),
     hex_hash(dense_hash(SparseHash)).
 
-%% Helpers
 
 knot_hash([L | Lengths], List, Pos, SkipSize) ->
     {L0, Pos0, SkipSize0} = knot_hash1(L, List, Pos, SkipSize),
