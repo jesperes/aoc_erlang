@@ -36,10 +36,10 @@ solve(Grid) ->
 -define(IS_STRAIGHT(C), (C =:= $| orelse C =:= $- orelse ?IS_LETTER(C))).
 -define(MAYBE_APPEND(C, Letters), if ?IS_LETTER(C) -> [C|Letters]; true -> Letters end).
 
-left_of(Pos, _) ->
+left_of(Pos) ->
     Pos - 1.
 
-right_of(Pos, _) ->
+right_of(Pos) ->
     Pos + 1.
 
 below(Pos, #grid{width = Width}) ->
@@ -58,15 +58,15 @@ trace(Pos, Direction, Grid, Letters, Steps) ->
         {up, C} when ?IS_STRAIGHT(C) ->
             trace(above(Pos, Grid), Direction, Grid, ?MAYBE_APPEND(C, Letters), Steps + 1);
         {left, C} when ?IS_STRAIGHT(C) ->
-            trace(left_of(Pos, Grid), Direction, Grid, ?MAYBE_APPEND(C, Letters), Steps + 1);
+            trace(left_of(Pos), Direction, Grid, ?MAYBE_APPEND(C, Letters), Steps + 1);
         {right, C} when ?IS_STRAIGHT(C) ->
-            trace(right_of(Pos, Grid), Direction, Grid, ?MAYBE_APPEND(C, Letters), Steps + 1);
+            trace(right_of(Pos), Direction, Grid, ?MAYBE_APPEND(C, Letters), Steps + 1);
         {C, $+} when C =:= up orelse C =:= down ->
-            case {at(left_of(Pos, Grid), Grid), at(right_of(Pos, Grid), Grid)} of
+            case {at(left_of(Pos), Grid), at(right_of(Pos), Grid)} of
                 {$-, $ } ->
-                    trace(left_of(Pos, Grid), left, Grid, Letters, Steps + 1);
+                    trace(left_of(Pos), left, Grid, Letters, Steps + 1);
                 {$ , $-} ->
-                    trace(right_of(Pos, Grid), right, Grid, Letters, Steps + 1)
+                    trace(right_of(Pos), right, Grid, Letters, Steps + 1)
             end;
         {C, $+} when C =:= left orelse C =:= right ->
             case {at(above(Pos, Grid), Grid), at(below(Pos, Grid), Grid)} of
