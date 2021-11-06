@@ -113,7 +113,7 @@ occupied_adjacents({X, Y}, Grid) ->
 
 %% Compute the next state of cell `V' at coordinate `Coord'.
 compute_next2(Coord, V, OldGrid) ->
-  VisibleAdj = length(visible_adjacents(Coord, OldGrid)),
+  VisibleAdj = visible_adjacents(Coord, OldGrid),
   case V of
     $L when VisibleAdj == 0 -> $#;             % become occupied
     $# when VisibleAdj >= 5 -> $L;             % become free
@@ -128,10 +128,10 @@ visible_adjacents(Coord, Grid) ->
   lists:foldl(
     fun(Delta, Acc) ->
         case find_first_in_direction(Coord, Delta, 1, Grid) of
-          {_, _} = Adj -> [Adj|Acc];
+          {_, _} -> Acc + 1;
           false -> Acc
         end
-    end, [], Deltas).
+    end, 0, Deltas).
 
 find_first_in_direction({X, Y} = Coord, {Dx, Dy} = Delta, Dist, Grid) ->
   VisibleCoord = {X + Dx * Dist, Y + Dy * Dist},
