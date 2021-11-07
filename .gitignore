@@ -7,4 +7,5 @@ erl_crash.dump
 _build/
 _checkouts/
 TEST-*.xml
-src/*_parser.erl
+**/*_parser.erl
+**/*_lexer.erl
