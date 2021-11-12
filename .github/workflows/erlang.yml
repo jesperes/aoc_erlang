@@ -30,9 +30,3 @@ jobs:
       run: "rebar3 dialyzer"
     - name: Solve puzzles
       run: "rebar3 eunit"
-
-    - name: "Publish Unit Test Results"
-      uses: EnricoMi/publish-unit-test-result-action@v1.23
-      if: always()
-      with:
-        files: TEST-*.xml
