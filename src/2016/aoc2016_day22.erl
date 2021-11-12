@@ -150,9 +150,8 @@ solve1(Input) ->
 %%
 
 -spec solve2(Input :: input_type()) -> result2_type().
-solve2(Input) ->
+solve2(_Input) ->
     %% Part 2 was solved manually by looking at the plotted grid.
-    ok = start(Input),
     244.
 
 %%% Parsing stuff.
@@ -177,33 +176,6 @@ parse_line(Line) ->
       used => size_to_num(Used),
       avail => size_to_num(Avail),
       usepercent => size_to_num(UsePercent)}.
-
--ifdef(PRINT).
-
-start(Nodes) ->
-    SortedNodes =
-        lists:sort(fun(#{pos := {Xa, Ya}}, #{pos := {Xb, Yb}}) -> {Ya, Xa} =< {Yb, Xb} end,
-                   Nodes),
-
-    lists:foreach(fun(#{pos := {X, Y}, usepercent := Ratio}) ->
-                     if (X == 35) and (Y == 0) -> io:format("G", []);
-                        (X == 0) and (Y == 0) -> io:format("S", []);
-                        Ratio >= 95 -> io:format("#", []);
-                        Ratio >= 50 -> io:format(".", []);
-                        true -> io:format("_", [])
-                     end,
-                     if X == 35 -> io:format("~n", []);
-                        true -> ok
-                     end
-                  end,
-                  SortedNodes).
-
--else().
-
-start(_) ->
-    ok.
-
--endif.
 
 find_viable_pairs(Nodes) ->
     lists:filter(fun({#{used := A_used}, #{avail := B_avail}}) ->

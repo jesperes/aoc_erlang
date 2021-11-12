@@ -19,7 +19,7 @@ info() ->
 
 -type rules() :: map().
 -type input_type() :: rules().
--type result_type() :: any().
+-type result_type() :: integer().
 -type image() :: [binary()].
 
 -spec start_pattern() -> image().
@@ -50,14 +50,14 @@ solve2(Rules) ->
 do_iterations(Image, _Rules, 0) ->
     count_pixels(Image);
 do_iterations(Image, Rules, N) ->
-    %    ?debugFmt("~nIteration: ~p~nImage:~n~s", [N, image_to_str(Image)]),
     Images = split(Image),
     EnhancedImages = enhance(Images, Rules),
     NewImage = stitch_square(EnhancedImages),
     do_iterations(NewImage, Rules, N - 1).
 
-count_pixels([]) -> 0;
-count_pixels([Binary|Rest]) ->
+count_pixels([]) ->
+    0;
+count_pixels([Binary | Rest]) ->
     length(binary:matches(Binary, <<"#">>)) + count_pixels(Rest).
 
 %% Image is a list of binaries, one per line of pixels
@@ -71,33 +71,37 @@ split(Image) when length(Image) rem 3 == 0 ->
 split2([]) ->
     [];
 split2([L1, L2 | Rest]) ->
-    [untuplify(lists:zip(L1, L2)) | split2(Rest)].
+    [zip(L1, L2) | split2(Rest)].
 
 split3([]) ->
     [];
 split3([L1, L2, L3 | Rest]) ->
-    [untuplify(lists:zip3(L1, L2, L3)) | split3(Rest)].
+    [zip3(L1, L2, L3) | split3(Rest)].
 
-%% Convert a list of tuples to a list of lists
-%% TODO write a custom variant of lists:zip/zip3 which does this directly.
-untuplify(List) ->
-    lists:map(fun(Tuple) when is_tuple(Tuple) -> tuple_to_list(Tuple) end, List).
+zip([], []) ->
+    [];
+zip([X1 | L1], [X2 | L2]) ->
+    [[X1, X2] | zip(L1, L2)].
+
+zip3([], [], []) ->
+    [];
+zip3([X1 | L1], [X2 | L2], [X3 | L3]) ->
+    [[X1, X2, X3] | zip3(L1, L2, L3)].
 
 -spec enhance(Images :: [image()], Rules :: rules()) -> [image()].
 enhance(Images, Rules) ->
     [apply_rule(Image, Rules) || Image <- Images].
 
 apply_rule(Image, Rules) ->
-    % ?debugFmt("apply_rule~n~s", [image_to_str(Image)]),
-    [Enhanced | _] =
-        [Y
-         || X <- lists:usort(rotations(Image)),
-            begin
-                Y = maps:get(X, Rules, undefined),
-                % ?debugFmt("Checking rotation: ~p -> ~p", [X, Y]),
-                Y =/= undefined
-            end],
-    Enhanced.
+    apply_rule_on_rotation(lists:usort(rotations(Image)), Rules).
+
+apply_rule_on_rotation([Image | Rest], Rules) ->
+    case maps:get(Image, Rules, undefined) of
+        undefined ->
+            apply_rule_on_rotation(Rest, Rules);
+        Match ->
+            Match
+    end.
 
 %% Stitch two images together side by side.
 stitch(Image1, Image2) ->
@@ -237,10 +241,6 @@ stitch_square_test() ->
          <<"########">>],
 
     ?assertEqual(Expected, stitch_square(A)).
-
-ex1_test() ->
-    Rules = parse(<<"../.# => ##./#../...\n.#./..#/### => #..#/..../..../#..#">>),
-    ?assertEqual([], solve1(Rules)).
 
 %% 2x2
 %% AB  CA  DC  BD
