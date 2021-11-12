@@ -12,7 +12,7 @@ main(Args) ->
     Regexps0 =
         case Regexps of
             [] ->
-                ["aoc\\d+_day\\d+"];
+                ["^aoc\\d+_day\\d+$"];
             _ ->
                 Regexps
         end,

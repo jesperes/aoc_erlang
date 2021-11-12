@@ -138,7 +138,7 @@ show_valid_fields(#{fields := Fields,
     fun(Pos) ->
         ValidFieldsForPos =
           find_field(Pos, [MyTicket|ValidTickets], Fields),
-        io:format("~nValid fields for pos ~p~n~p~n", [Pos, ValidFieldsForPos])
+          io:format("~nValid fields for pos ~p~n~p~n", [Pos, ValidFieldsForPos])
     end, lists:seq(1, maps:size(Fields))).
 
 %% Find what field corresponds to position `Pos'

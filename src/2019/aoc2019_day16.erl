@@ -39,7 +39,6 @@ fft(String, N) ->
 
 fft(Digits) ->
     Len = length(Digits),
-    io:format("~n---~n", []),
     lists:map(fun(SegLen) ->
                  List = lists:zip(Digits, lists:seq(0, length(Digits) - 1)),
                  abs(lists:foldl(fun({Digit, Pos}, Acc) -> Digit * pattern(Pos, SegLen) + Acc end,

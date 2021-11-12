@@ -178,6 +178,8 @@ parse_line(Line) ->
       avail => size_to_num(Avail),
       usepercent => size_to_num(UsePercent)}.
 
+-ifdef(PRINT).
+
 start(Nodes) ->
     SortedNodes =
         lists:sort(fun(#{pos := {Xa, Ya}}, #{pos := {Xb, Yb}}) -> {Ya, Xa} =< {Yb, Xb} end,
@@ -195,6 +197,13 @@ start(Nodes) ->
                      end
                   end,
                   SortedNodes).
+
+-else().
+
+start(_) ->
+    ok.
+
+-endif.
 
 find_viable_pairs(Nodes) ->
     lists:filter(fun({#{used := A_used}, #{avail := B_avail}}) ->
