@@ -7,8 +7,9 @@
 -behavior(aoc_puzzle).
 
 %% Assembly optimization puzzle. The assembly code in the input is really a
-%% program which counts the number of non-primes in an interval. Instead of
-%% "interpreting" the assembly code, we just count the (non-)primes.
+%% program which counts the number of non-primes in an interval, but very
+%% inefficiently, making it prohibitively expensive to compute it by actually
+%% running the program.
 %%
 %% See
 %% https://www.reddit.com/r/adventofcode/comments/7lms6p/2017_day_23_solutions/
@@ -24,7 +25,7 @@ info() ->
                 has_input_file = true}.
 
 -type input_type() :: integer().
--type result_type() :: {integer(), integer()}.
+-type result_type() :: integer().
 
 -spec parse(Binary :: binary()) -> input_type().
 parse(Binary) ->
