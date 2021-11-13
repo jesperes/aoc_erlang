@@ -42,36 +42,38 @@ solve2({Grid, Start}) ->
 iterate(_, _, _, 0, Count) ->
     Count;
 iterate(Grid, Pos, Dir, N, Count) ->
-    {NewDir, NewGrid, NewCount} =
-        case maps:get(Pos, Grid, clean) of
-            infected ->
-                {turn_right(Dir), maps:remove(Pos, Grid), Count};
-            clean ->
-                {turn_left(Dir), maps:put(Pos, infected, Grid), Count + 1}
-        end,
-    iterate(NewGrid, move(Pos, NewDir), NewDir, N - 1, NewCount).
+    case maps:get(Pos, Grid, clean) of
+        infected ->
+            NewDir = turn_right(Dir),
+            iterate(maps:remove(Pos, Grid), move(Pos, NewDir), NewDir, N - 1, Count);
+        clean ->
+            NewDir = turn_left(Dir),
+            iterate(maps:put(Pos, infected, Grid), move(Pos, NewDir), NewDir, N - 1, Count + 1)
+    end.
 
 iterate2(_, _, _, 0, Count) ->
     Count;
 iterate2(Grid, Pos, Dir, N, Count) ->
-    {NewDir, NewGrid, NewCount} =
-        case maps:get(Pos, Grid, clean) of
-            clean ->
-                {turn_left(Dir), maps:put(Pos, weakened, Grid), Count};
-            weakened ->
-                {Dir, maps:put(Pos, infected, Grid), Count + 1};
-            infected ->
-                {turn_right(Dir), maps:put(Pos, flagged, Grid), Count};
-            flagged ->
-                {reverse(Dir), maps:remove(Pos, Grid), Count}
-        end,
-    iterate2(NewGrid, move(Pos, NewDir), NewDir, N - 1, NewCount).
+    case maps:get(Pos, Grid, clean) of
+        clean ->
+            NewDir = turn_left(Dir),
+            iterate2(maps:put(Pos, weakened, Grid), move(Pos, NewDir), NewDir, N - 1, Count);
+        weakened ->
+            iterate2(maps:put(Pos, infected, Grid), move(Pos, Dir), Dir, N - 1, Count + 1);
+        infected ->
+            NewDir = turn_right(Dir),
+            iterate2(maps:put(Pos, flagged, Grid), move(Pos, NewDir), NewDir, N - 1, Count);
+        flagged ->
+            NewDir = reverse(Dir),
+            iterate2(maps:remove(Pos, Grid), move(Pos, NewDir), NewDir, N - 1, Count)
+    end.
 
 turn_right(Dir) ->
     (Dir + 1) rem 4.
 
 turn_left(Dir) ->
     (Dir + 3) rem 4.
+
 reverse(Dir) ->
     (Dir + 2) rem 4.
 
