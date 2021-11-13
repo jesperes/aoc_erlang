@@ -85,14 +85,3 @@ move({X, Y}, 2) ->
     {X, Y + 1};
 move({X, Y}, 3) ->
     {X - 1, Y}.
-
-%% Tests
-
--ifdef(TEST).
-
-ex1_test() ->
-    Start = <<"..#\n#..\n...">>,
-    Input = parse(Start),
-    ?assertEqual(0, solve1(Input)).
-
--endif.
