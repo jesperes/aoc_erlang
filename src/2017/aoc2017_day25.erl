@@ -19,13 +19,18 @@ info() ->
                 has_input_file = false}.
 
 -type state_name() :: 'A' | 'B' | 'C' | 'D' | 'E' | 'F'.
+-type tape_value() :: 0 | 1.
+-type tape_dir() :: -1 | 1.
+-type state() ::
+    {WriteValue :: tape_value(), Direction :: tape_dir(), NextState :: state_name()}.
+-type tape() :: #{integer() := tape_value()}.
 
 -record(tm,
         {current_state :: state_name(),
          steps :: integer(),
-         tape = #{} :: #{integer() := integer()},
+         tape = #{} :: tape(),
          cursor = 0 :: integer(),
-         states :: #{atom() := #{integer() := {integer(), -1 | 1, state_name()}}}}).
+         states :: #{state_name() := #{tape_value() := state()}}}).
 
 -type tm() :: #tm{}.
 -type input_type() :: tm().
@@ -61,15 +66,8 @@ execute(TM, N) ->
                   cursor = NewCursor},
             N + 1).
 
+-spec write(tape_value(), integer(), tape()) -> tape().
 write(1, Cursor, Tape) ->
     maps:put(Cursor, 1, Tape);
 write(0, Cursor, Tape) ->
     maps:remove(Cursor, Tape).
-
-%% Tests
-
--ifdef(TEST).
-
-%% ...
-
--endif.
