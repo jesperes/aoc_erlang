@@ -23,13 +23,18 @@ info() ->
 -type tape_dir() :: -1 | 1.
 -type state() ::
     {WriteValue :: tape_value(), Direction :: tape_dir(), NextState :: state_name()}.
--type tape() :: #{integer() := tape_value()}.
+%% (Ab)use the atomics module to serve as the Turing Machine tape.
+-type tape() :: atomics:atomics_ref().
+
+%% Tune tape size to be large enough.
+-define(TAPE_SIZE, 8000).
+-define(TAPE_START, ?TAPE_SIZE div 2).
 
 -record(tm,
         {current_state :: state_name(),
          steps :: integer(),
-         tape = #{} :: tape(),
-         cursor = 0 :: integer(),
+         tape :: tape(),
+         cursor = ?TAPE_START :: integer(),
          states :: #{state_name() := #{tape_value() := state()}}}).
 
 -type tm() :: #tm{}.
@@ -40,6 +45,7 @@ info() ->
 parse(_Binary) ->
     #tm{current_state = 'A',
         steps = 12368930,
+        tape = atomics:new(?TAPE_SIZE, []),
         states =
             #{'A' => #{0 => {1, 1, 'B'}, 1 => {0, 1, 'C'}},
               'B' => #{0 => {0, -1, 'A'}, 1 => {0, 1, 'D'}},
@@ -54,11 +60,11 @@ solve(TM) ->
 
 -spec execute(TM :: tm(), Limit :: integer()) -> integer().
 execute(#tm{steps = Steps, tape = Tape}, N) when Steps == N ->
-    maps:size(Tape);
+    count_ones(Tape);
 execute(TM, N) ->
-    CurrentState = maps:get(TM#tm.current_state, TM#tm.states),
-    CurrentValue = maps:get(TM#tm.cursor, TM#tm.tape, 0),
-    {WriteValue, Dir, NextState} = maps:get(CurrentValue, CurrentState),
+    State = maps:get(TM#tm.current_state, TM#tm.states),
+    Value = read(TM#tm.cursor, TM#tm.tape),
+    {WriteValue, Dir, NextState} = maps:get(Value, State),
     NewTape = write(WriteValue, TM#tm.cursor, TM#tm.tape),
     NewCursor = TM#tm.cursor + Dir,
     execute(TM#tm{current_state = NextState,
@@ -67,7 +73,14 @@ execute(TM, N) ->
             N + 1).
 
 -spec write(tape_value(), integer(), tape()) -> tape().
-write(1, Cursor, Tape) ->
-    maps:put(Cursor, 1, Tape);
-write(0, Cursor, Tape) ->
-    maps:remove(Cursor, Tape).
+write(Value, Cursor, Tape) ->
+    ok = atomics:put(Tape, Cursor, Value),
+    Tape.
+
+-spec read(tape_value(), tape()) -> integer().
+read(Cursor, Tape) ->
+    atomics:get(Tape, Cursor).
+
+-spec count_ones(tape()) -> number().
+count_ones(Tape) ->
+    lists:foldl(fun(Ix, Acc) -> atomics:get(Tape, Ix) + Acc end, 0, lists:seq(1, ?TAPE_SIZE)).
