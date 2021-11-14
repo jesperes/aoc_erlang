@@ -13,7 +13,7 @@ If there are locally modified solutions, only those will be executed.
 
 * 2015: complete
 * 2016: all except day 11
-* 2017: day 1-12
+* 2017: complete
 * 2018: complete
 * 2019: complete
 * 2020: complete
