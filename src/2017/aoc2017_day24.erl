@@ -18,8 +18,8 @@ info() ->
                 has_input_file = true,
                 use_one_solver_fun = true}.
 
--type input_type() :: any().
--type result_type() :: integer().
+-type input_type() :: [{integer(), integer()}].
+-type result_type() :: {integer(), integer()}.
 
 -spec parse(Binary :: binary()) -> input_type().
 parse(Binary) ->
@@ -45,22 +45,22 @@ strength(Bridge) ->
 length_strength(Bridge) ->
     {length(Bridge), strength(Bridge)}.
 
-find_all_bridges0(C, Comps) ->
-    lists:foldl(fun(X, Acc) ->
-                   case matches(C, X) of
-                       Y when is_integer(Y) ->
-                           lists:foldl(fun(SB, Acc0) -> [[X | SB] | Acc0] end,
+find_all_bridges0(First, Comps) ->
+    lists:foldl(fun(Comp, Acc) ->
+                   case matches(First, Comp) of
+                       Other when is_integer(Other) ->
+                           lists:foldl(fun(SubBridge, Acc0) -> [[Comp | SubBridge] | Acc0] end,
                                        Acc,
-                                       lists:usort(find_all_bridges0(Y, Comps -- [X])));
+                                       lists:usort(find_all_bridges0(Other, Comps -- [Comp])));
                        false -> [[] | Acc]
                    end
                 end,
                 [],
                 Comps).
 
-matches(X, {Y, X}) ->
+matches(X, {Y, X}) when is_integer(X) ->
     Y;
-matches(X, {X, Y}) ->
+matches(X, {X, Y}) when is_integer(X) ->
     Y;
 matches(_, _) ->
     false.
