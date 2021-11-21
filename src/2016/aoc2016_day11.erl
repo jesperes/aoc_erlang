@@ -4,8 +4,7 @@
 
 -export([parse/1, solve1/1, solve2/1, info/0]).
 
--compile([export_all, nowarn_export_all]).
-
+% -compile([export_all, nowarn_export_all]).
 
 -include("aoc_puzzle.hrl").
 
@@ -20,33 +19,37 @@ info() ->
                 expected = {37, 61},
                 has_input_file = false}.
 
-%% Represent an element by a tuple of two integers specifying which
-%% floor the generator and the microchip is on. Note that the element
-%% name is irrelevant (they are interchangable). This representation
-%% allows us to prune large parts of the search tree.
--type element() :: {GeneratorFloor :: integer(), MicrochipFloor :: integer()}.
--type state() :: {ElevatorFloor :: integer(), Elements :: [element()]}.
+%% Represent the current state using a binary:
+%%
+%% <<EF, RTG1, MC1, RTG2, MC2, ... >>
+%%
+%% EF   - the floor the elevator is on
+%% RTFn - the floor RTG <n> is on
+%% MCn  - the floor microchip <n> is on
+%%
+-type state() :: binary().
 -type input_type() :: state().
 -type result_type() :: integer().
 
+-define(NUM_ELEMENTS(Obj), byte_size(Obj) div 2).
+
 -spec parse(Binary :: binary()) -> input_type().
 parse(_Binary) ->
-    {1,         %% elevator floor
-     [{1, 1},   %% strontium
-      {1, 1},   %% plutonium
-      {2, 3},   %% thulium
-      {2, 2},   %% ruthenium
-      {2, 2}]}. %% curium
+    <<1,      %% elevator floor
+      1, 1,   %% strontium
+      1, 1,   %% plutonium
+      2, 3,   %% thulium
+      2, 2,   %% ruthenium
+      2, 2>>. %% curium
 
 -spec solve1(Input :: input_type()) -> result_type().
 solve1(Input) ->
     find_path(Input).
 
 -spec solve2(Input :: input_type()) -> result_type().
-solve2({_, _Elements}) ->
-    %% find_path({F, Elements ++ [{1, 1}, {1, 1}]}).
-    61.
-
+solve2(Input) ->
+    Extras = <<1, 1, 1, 1>>,
+    find_path(<<Input/binary, Extras/binary>>).
 
 find_path(Start) ->
     %% GScore is the cost of the cheapest path from start to n
@@ -61,13 +64,15 @@ find_path(Start) ->
 
     OpenSet = gb_sets:from_list([{H, Start}]),
 
-    find_path(GScore, FScore, OpenSet).
+    Goal = list_to_binary(lists:duplicate(byte_size(Start), 4)),
 
-find_path(G, F, OpenSet) ->
+    find_path(GScore, FScore, OpenSet, Goal).
+
+find_path(G, F, OpenSet, Goal) ->
     {{Dist, Node}, O0} = gb_sets:take_smallest(OpenSet),
     F0 = maps:remove(Node, F),
 
-    case is_goal(Node) of
+    case Node =:= Goal of
         true ->
             Dist;
         false ->
@@ -87,26 +92,7 @@ find_path(G, F, OpenSet) ->
                   {G, F0, O0},
                   neighbors(Node)),
 
-            find_path(NewG, NewF, NewO)
-    end.
-
-find_path2(State) ->
-    H = heuristic(State),
-    do_find_path2(gb_sets:from_list([{0, H, State}])).
-
-do_find_path2(Queue) ->
-    {{Dist, _, Node}, Q0} = gb_sets:take_smallest(Queue),
-    case is_goal(Node) of
-        true ->
-            Dist;
-        false ->
-            Qout =
-                lists:foldl(
-                  fun(Nbr, Q) ->
-                          H = heuristic(Nbr),
-                          gb_sets:add({Dist + 1, H, Nbr}, Q)
-                  end, Q0, neighbors(Node)),
-            do_find_path2(Qout)
+            find_path(NewG, NewF, NewO, Goal)
     end.
 
 update_state(Nbr, GScore, FScore, Gin, Fin, Oin) ->
@@ -119,121 +105,115 @@ update_state(Nbr, GScore, FScore, Gin, Fin, Oin) ->
 %% all the elements up to the 4th floor. The function must never
 %% overestimate the cost, to ensure that the path found is the actual
 %% shortest one.
--spec heuristic(state()) -> number().
-heuristic({_, Elements}) ->
-    lists:foldl(
-      fun({G, M}, Acc) ->
-              MinMovesNeeded = lists:max([4 - G, 4 - M]),
-              Acc + MinMovesNeeded
-      end,
-      0,
-      Elements).
+-spec heuristic(binary()) -> number().
+heuristic(<<_EF, Objects/binary>>) ->
+    heuristic0(Objects).
+
+heuristic0(<<>>) -> 0;
+heuristic0(<<RTG, MC, Rest/binary>>) ->
+    (4 - RTG) + (4 - MC) + heuristic0(Rest).
 
 %% Neighbors
-neighbors({ElevatorFloor, Elements}) ->
-    Seq = lists:seq(0, length(Elements) - 1),
-    Floors = [max(1, ElevatorFloor - 1), min(4, ElevatorFloor + 1)],
-    Types = [generator, microchip],
+neighbors(<<EF, Objects/binary>> = _S) ->
+    %% ?debugFmt("State = ~p", [S]),
 
-    Moves =
+    Seq = lists:seq(0, ?NUM_ELEMENTS(Objects) - 1),
+    Floors = [max(1, EF - 1), min(4, EF + 1)],
+    Types = [0, 1],
+
+    States =
         %% 1-element moves
-        [{move, {to, DestFloor}, {Type, Idx}} ||
+        [State ||
             DestFloor <- Floors,
-            DestFloor =/= ElevatorFloor,
+            DestFloor =/= EF,
             Idx <- Seq,
             Type <- Types,
-            is_element_on_floor(Type, ElevatorFloor, Idx, Elements)] ++
+            binary:at(Objects, Idx * 2 + Type) == EF, %% remove objects not on the elevator's floor
+            State <- [apply_move(DestFloor, Type, Idx, Objects)],
+            is_valid_state(State)] ++
 
         %% 2-element moves
-        [{move, {to, DestFloor}, {Type1, Idx1}, {Type2, Idx2}} ||
+        [State ||
             DestFloor <- Floors,
-            DestFloor =/= ElevatorFloor,
+            DestFloor =/= EF,
             Idx1 <- Seq,
             Idx2 <- Seq,
             Type1 <- Types,
             Type2 <- Types,
             {Type1, Idx1} < {Type2, Idx2},
-            is_element_on_floor(Type1, ElevatorFloor, Idx1, Elements),
-            is_element_on_floor(Type2, ElevatorFloor, Idx2, Elements)],
+            binary:at(Objects, Idx1 * 2 + Type1) == EF,
+            binary:at(Objects, Idx2 * 2 + Type2) == EF,
+            State <- [apply_move(DestFloor, Type1, Idx1, Type2, Idx2, Objects)],
+            is_valid_state(State)],
 
-    Neighbors =
-        lists:usort(
-          lists:map(
-            fun(Move) ->
-                    apply_move(Move, Elements)
-            end, Moves)),
+    States0 = lists:map(fun(State) ->
+                                sort_state(State)
+                        end, States),
 
-    %% Remove any states where any microchip would be fried
-    lists:filter(fun(NewElems) ->
-                         is_valid_state(NewElems)
-                 end, Neighbors).
+    lists:usort(States0).
 
-is_element_on_floor(Type, Floor, Idx, Elements) ->
-    case {Type, lists:nth(Idx + 1, Elements)} of
-        {generator, {F, _}} when F =:= Floor ->
-            true;
-        {microchip, {_, F}} when F =:= Floor ->
-            true;
-        _ ->
+
+%% Sort each state to prune equivalent states. Despite converting
+%% to/from a list, this is a very important step since it keeps down
+%% the size of the search tree.
+sort_state(<<EF, Objects/binary>>) ->
+    <<EF, (from_tuples(lists:sort(to_tuples(Objects))))/binary>>.
+
+to_tuples(<<>>) ->
+    [];
+to_tuples(<<X, Y, Rest/binary>>) ->
+    [{X, Y}|to_tuples(Rest)].
+
+from_tuples([]) ->
+    <<>>;
+from_tuples([{X, Y}|Rest]) ->
+    <<X, Y, (from_tuples(Rest))/binary>>.
+
+apply_move(DestFloor, Type, Idx, Objects) ->
+    <<DestFloor, (replace_byte_at(Objects, Idx * 2 + Type, DestFloor))/binary>>.
+
+apply_move(DestFloor, Type1, Idx1, Type2, Idx2, Objects) ->
+    Objects0 = replace_byte_at(Objects, Idx1 * 2 + Type1, DestFloor),
+    Objects1 = replace_byte_at(Objects0, Idx2 * 2 + Type2, DestFloor),
+    <<DestFloor, Objects1/binary>>.
+
+is_valid_state(<<_EF, Objects/binary>>) ->
+    check_elements(Objects, Objects, 0).
+
+check_elements(_, Objects, Idx) when Idx >= ?NUM_ELEMENTS(Objects) ->
+    true;
+check_elements(<<FloorRTG, FloorMC, Rest/binary>>, Objects, Idx) when FloorRTG == FloorMC ->
+    %% Chip is shielded
+    check_elements(Rest, Objects, Idx + 1);
+check_elements(<<_, FloorMC, Rest/binary>>, Objects, Idx) ->
+    %% Check that there are no other RTGs on this floor.
+    case check_no_rtgs(FloorMC, Idx, Objects, 0) of
+        true ->
+            check_elements(Rest, Objects, Idx + 1);
+        false ->
             false
     end.
 
-is_valid_floor(F) when F >= 1 andalso F =< 4 ->
+check_no_rtgs(_, _SkipIdx, Objects, Idx) when Idx >= byte_size(Objects) ->
     true;
-is_valid_floor(_) -> false.
+check_no_rtgs(FloorMC, SkipIdx, <<_, _, Rest/binary>>, Idx) when Idx == SkipIdx ->
+    check_no_rtgs(FloorMC, SkipIdx, Rest, Idx + 1);
+check_no_rtgs(FloorMC, _SkipIdx, <<FloorRTG, _, _Rest/binary>>, _Idx) when FloorMC == FloorRTG ->
+    false;
+check_no_rtgs(FloorMC, SkipIdx, <<_, _, Rest/binary>>, Idx) ->
+    check_no_rtgs(FloorMC, SkipIdx, Rest, Idx + 1).
 
-apply_move({move, {to, F}, {Type, Idx}}, Elements) ->
-    NewElems =
-        replace_nth_fun(
-          Idx, Elements,
-          fun({_G, M}) when Type =:= generator ->
-                  {F, M};
-             ({G, _M}) when Type =:= microchip ->
-                  {G, F}
-          end),
-    {F, NewElems};
-apply_move({move, {to, F}, {Type1, Idx1}, {Type2, Idx2}}, Elements) ->
-    {_, E1} = apply_move({move, {to, F}, {Type1, Idx1}}, Elements),
-    apply_move({move, {to, F}, {Type2, Idx2}}, E1).
+replace_byte_at(Binary, Idx, Replace) when Idx < byte_size(Binary) ->
+    X = binary:part(Binary, {0, Idx}),
+    Y = binary:part(Binary, {Idx + 1, byte_size(Binary) - Idx - 1}),
+    Out = <<X/binary, Replace, Y/binary>>,
+    %% ?assertEqual(byte_size(Binary), byte_size(Out)),
+    %% ?debugFmt("~p -> replacing idx ~p with ~p -> ~p",
+    %%           [Binary, Idx, Replace, Out]),
+    Out.
 
-replace_nth(N, List, Elem) ->
-    {L1, [_|L2]} = lists:split(N, List),
-    L1 ++ [Elem|L2].
-
-replace_nth_fun(N, List, Fun) ->
-    {L1, [Old|L2]} = lists:split(N, List),
-    L1 ++ [Fun(Old)|L2].
-
-remove_nth(N, List) ->
-    {L1, [_|L2]} = lists:split(N, List),
-    L1 ++ L2.
-
-is_valid_state({_, Elements}) ->
-    check_elements(Elements, Elements, 0, length(Elements)).
-
-check_elements(_, _, N, N) ->
-    true;
-check_elements([Elem|Rest], Elements, Idx, Len) ->
-    case Elem of
-        {F, F} ->
-            %% Chip is shielded
-            check_elements(Rest, Elements, Idx + 1, Len);
-        {_GF, MF} ->
-            %% Check that there are no other RTGs on this floor.
-            lists:all(fun({GF, _}) when GF =/= MF ->  true;
-                         (_) -> false
-                      end, remove_nth(Idx, Elements))
-    end.
-
-%% Check if the current node is the goal node.
-is_goal({_, Elements}) ->
-    lists:all(fun ({4, 4}) ->
-                      true;
-                  (_) ->
-                      false
-              end,
-              Elements).
+replace_byte_at_test() ->
+    ?assertEqual(<<1, 2, 42, 4, 5, 6>>, replace_byte_at(<<1, 2, 3, 4, 5, 6>>, 2, 42)).
 
 ex1_test() ->
-    ?assertEqual(11, find_path({1, [{2, 1}, {3, 1}]})),
-    ?assertEqual(11, find_path2({1, [{2, 1}, {3, 1}]})).
+    ?assertEqual(11, find_path(<<1, 2, 1, 3, 1>>)).
