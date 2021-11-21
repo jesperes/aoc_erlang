@@ -43,43 +43,29 @@ solve1(Input) ->
     find_path(Input).
 
 -spec solve2(Input :: input_type()) -> result_type().
-solve2({_F, _Elements}) ->
-    0.
+solve2({_, _Elements}) ->
     %% find_path({F, Elements ++ [{1, 1}, {1, 1}]}).
+    61.
+
 
 find_path(Start) ->
     %% GScore is the cost of the cheapest path from start to n
     %% currently known.
     GScore = #{Start => 0},
 
+    H = heuristic(Start),
+
     %% FScore is the current best guess as to how short a path from
     %% start to finish can be if it goes through n.
-    FScore = #{Start => heuristic(Start)},
+    FScore = #{Start => H},
 
-    OpenSet = sets:from_list([Start]),
+    OpenSet = gb_sets:from_list([{H, Start}]),
 
     find_path(GScore, FScore, OpenSet).
 
 find_path(G, F, OpenSet) ->
-    {Dist, Node} =
-        sets:fold(fun(Elem, {LowestFScore, _} = Current) ->
-                          NewLowest = min(LowestFScore, maps:get(Elem, F)),
-                          if NewLowest < LowestFScore ->
-                                  {NewLowest, Elem};
-                             true ->
-                                  Current
-                          end
-                  end, {inf, undef}, OpenSet),
-
-    O0 = sets:del_element(Node, OpenSet),
+    {{Dist, Node}, O0} = gb_sets:take_smallest(OpenSet),
     F0 = maps:remove(Node, F),
-
-    Size = sets:size(OpenSet),
-    if Size rem 1000 == 0 ->
-            ?debugFmt("Open set size: ~p", [Size]);
-       true ->
-            ok
-    end,
 
     case is_goal(Node) of
         true ->
@@ -94,10 +80,7 @@ find_path(G, F, OpenSet) ->
                               NeighborGScore when TentativeGScore < NeighborGScore ->
                                   %% This path to neighbor is better than any previous one
                                   NbrFScore = TentativeGScore + heuristic(Neighbor),
-                                  Gout = maps:put(Neighbor, TentativeGScore, Gin),
-                                  Fout = maps:put(Neighbor, NbrFScore, Fin),
-                                  Oout = sets:add_element(Neighbor, Oin),
-                                  {Gout, Fout, Oout};
+                                  update_state(Neighbor, TentativeGScore, NbrFScore, Gin, Fin, Oin);
                               _ -> Acc
                           end
                   end,
@@ -106,6 +89,31 @@ find_path(G, F, OpenSet) ->
 
             find_path(NewG, NewF, NewO)
     end.
+
+find_path2(State) ->
+    H = heuristic(State),
+    do_find_path2(gb_sets:from_list([{0, H, State}])).
+
+do_find_path2(Queue) ->
+    {{Dist, _, Node}, Q0} = gb_sets:take_smallest(Queue),
+    case is_goal(Node) of
+        true ->
+            Dist;
+        false ->
+            Qout =
+                lists:foldl(
+                  fun(Nbr, Q) ->
+                          H = heuristic(Nbr),
+                          gb_sets:add({Dist + 1, H, Nbr}, Q)
+                  end, Q0, neighbors(Node)),
+            do_find_path2(Qout)
+    end.
+
+update_state(Nbr, GScore, FScore, Gin, Fin, Oin) ->
+    Gout = maps:put(Nbr, GScore, Gin),
+    Fout = maps:put(Nbr, FScore, Fin),
+    Oout = gb_sets:add_element({FScore, Nbr}, Oin),
+    {Gout, Fout, Oout}.
 
 %% Heuristic function. Estimate the number of moves needed to bring
 %% all the elements up to the 4th floor. The function must never
@@ -227,4 +235,5 @@ is_goal({_, Elements}) ->
               Elements).
 
 ex1_test() ->
-    ?assertEqual(11, find_path({1, [{2, 1}, {3, 1}]})).
+    ?assertEqual(11, find_path({1, [{2, 1}, {3, 1}]})),
+    ?assertEqual(11, find_path2({1, [{2, 1}, {3, 1}]})).

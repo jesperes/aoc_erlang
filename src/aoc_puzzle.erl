@@ -86,7 +86,7 @@ run_puzzle(Info, Input) ->
             ok
     end.
 
--define(TIMEOUT, 360).
+-define(TIMEOUT, 3600).
 
 -spec mktest(#aoc_puzzle{} | integer()) ->
                 {string(), {timeout, integer(), fun()}} | {string(), fun()}.
