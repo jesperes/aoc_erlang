@@ -12,7 +12,7 @@ rebar3 eunit -m aoc_eunit
 If there are locally modified solutions, only those will be executed.
 
 * 2015: complete
-* 2016: all except day 11
+* 2016: complete
 * 2017: complete
 * 2018: complete
 * 2019: complete
