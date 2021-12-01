@@ -25,12 +25,11 @@ parse(Input) ->
 
 -spec solve(Input :: input_type()) -> result_type().
 solve(Input) ->
-    Lines = binary:split(Input, <<"\n">>, [global, trim]),
-    LineFun = fun(L) -> lists:map(fun binary_to_integer/1, binary:split(L, <<"x">>, [global])) end,
     lists:foldl(fun(Line, {A1, A2}) ->
-                   [X, Y, Z] = LineFun(Line),
+                   [X, Y, Z] =
+                       lists:map(fun binary_to_integer/1, binary:split(Line, <<"x">>, [global])),
                    {A1 + 2 * X * Y + 2 * Y * Z + 2 * Z * X + lists:min([X * Y, Y * Z, Z * X]),
                     A2 + 2 * lists:min([X + Y, Y + Z, Z + X]) + X * Y * Z}
                 end,
                 {0, 0},
-                Lines).
+                binary:split(Input, <<"\n">>, [global, trim])).
