@@ -20,7 +20,8 @@ info() ->
 
 -spec parse(Binary :: binary()) -> input_type().
 parse(Binary) ->
-    string:tokens(binary_to_list(Binary), "\n\r").
+    lists:map(fun(B) -> binary_to_list(B) end,
+              binary:split(Binary, <<"\n">>, [trim_all, global])).
 
 -spec solve1(Input :: input_type()) -> result_type().
 solve1(_Input) ->
