@@ -16,29 +16,27 @@ info() ->
                 use_one_solver_fun = true,
                 has_input_file = true}.
 
--type input_type() :: [nonempty_string()].
+-type instr() :: tuple().
+-type input_type() :: [instr()].
 -type result_type() :: {any(), any()}.
 
 -spec parse(Input :: binary()) -> input_type().
 parse(Input) ->
-    string:tokens(binary_to_list(Input), "\n\r").
+    lists:map(fun(Line) ->
+                 case string:tokens(binary_to_list(Line), " ,") of
+                     ["toggle", X0, Y0, "through", X1, Y1] ->
+                         {toggle, {toi(X0), toi(Y0)}, {toi(X1), toi(Y1)}};
+                     ["turn", "on", X0, Y0, "through", X1, Y1] ->
+                         {turn_on, {toi(X0), toi(Y0)}, {toi(X1), toi(Y1)}};
+                     ["turn", "off", X0, Y0, "through", X1, Y1] ->
+                         {turn_off, {toi(X0), toi(Y0)}, {toi(X1), toi(Y1)}}
+                 end
+              end,
+              binary:split(Input, <<"\n">>, [global, trim])).
 
--spec solve(Lines :: input_type()) -> result_type().
-solve(Lines) ->
-    Instrs =
-        lists:map(fun(Line) ->
-                     case string:tokens(Line, " ,") of
-                         ["toggle", X0, Y0, "through", X1, Y1] ->
-                             {toggle, {toi(X0), toi(Y0)}, {toi(X1), toi(Y1)}};
-                         ["turn", "on", X0, Y0, "through", X1, Y1] ->
-                             {turn_on, {toi(X0), toi(Y0)}, {toi(X1), toi(Y1)}};
-                         ["turn", "off", X0, Y0, "through", X1, Y1] ->
-                             {turn_off, {toi(X0), toi(Y0)}, {toi(X1), toi(Y1)}}
-                     end
-                  end,
-                  Lines),
-
-    {543903, 14687245} = process_instr(Instrs).
+-spec solve(Instrs :: input_type()) -> result_type().
+solve(Instrs) ->
+    process_instr(Instrs).
 
 toi(N) ->
     list_to_integer(N).
