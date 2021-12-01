@@ -60,7 +60,7 @@ read_input(Info) ->
 run_puzzle(Info) ->
     {TInput, Input} = timer:tc(fun() -> read_input(Info) end),
     {TPuzzle, Value} = timer:tc(fun() -> run_puzzle(Info, Input) end),
-    ?debugFmt("~p: ~p+~p = ~p usecs", [label(Info), TInput, TPuzzle, TInput + TPuzzle]),
+    ?debugFmt("~s: parsing=~p puzzle=~p total=~p", [label(Info), TInput, TPuzzle, TInput + TPuzzle]),
     Value.
 
 -else.
