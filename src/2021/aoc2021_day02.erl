@@ -21,32 +21,35 @@ info() ->
 -spec parse(Binary :: binary()) -> input_type().
 parse(Binary) ->
     lists:map(fun(Line) ->
-                      [Cmd, X] = binary:split(Line, <<" ">>),
-                      {Cmd, binary_to_integer(X)}
-              end, binary:split(Binary, <<"\n">>, [trim_all, global])).
+                 [Cmd, X] = binary:split(Line, <<" ">>),
+                 {Cmd, binary_to_integer(X)}
+              end,
+              binary:split(Binary, <<"\n">>, [trim_all, global])).
 
 -spec solve1(Input :: input_type()) -> result_type().
 solve1(Input) ->
     {Depth, Pos} =
-        lists:foldl(
-          fun({Cmd, X}, {Depth, Pos}) ->
-                  case Cmd of
-                      <<"forward">> -> {Depth, Pos + X};
-                      <<"down">> ->    {Depth + X, Pos};
-                      <<"up">> ->      {Depth - X, Pos}
-                  end
-          end, {0, 0}, Input),
+        lists:foldl(fun({Cmd, X}, {Depth, Pos}) ->
+                       case Cmd of
+                           <<"forward">> -> {Depth, Pos + X};
+                           <<"down">> -> {Depth + X, Pos};
+                           <<"up">> -> {Depth - X, Pos}
+                       end
+                    end,
+                    {0, 0},
+                    Input),
     Depth * Pos.
 
 -spec solve2(Input :: input_type()) -> result_type().
 solve2(Input) ->
     {Depth, Pos, _Aim} =
-        lists:foldl(
-          fun({Cmd, X}, {Depth, Pos, Aim}) ->
-                  case Cmd of
-                      <<"forward">> -> {Depth + Aim * X, Pos + X, Aim};
-                      <<"down">> ->    {Depth, Pos, Aim + X};
-                      <<"up">> ->      {Depth, Pos, Aim - X}
-                  end
-          end, {0, 0, 0}, Input),
+        lists:foldl(fun({Cmd, X}, {Depth, Pos, Aim}) ->
+                       case Cmd of
+                           <<"forward">> -> {Depth + Aim * X, Pos + X, Aim};
+                           <<"down">> -> {Depth, Pos, Aim + X};
+                           <<"up">> -> {Depth, Pos, Aim - X}
+                       end
+                    end,
+                    {0, 0, 0},
+                    Input),
     Depth * Pos.
