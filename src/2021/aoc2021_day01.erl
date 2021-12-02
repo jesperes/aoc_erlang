@@ -15,8 +15,8 @@ info() ->
                 expected = {1400, 1429},
                 has_input_file = true}.
 
--type input_type() :: [integer()].
--type result_type() :: integer().
+-type input_type() :: [pos_integer()].
+-type result_type() :: pos_integer().
 
 -spec parse(Binary :: binary()) -> input_type().
 parse(Binary) ->
