@@ -32,7 +32,6 @@ parse(Binary) ->
 solve({Numbers, Boards}) ->
     play_bingo(Numbers, [], Boards, []).
 
-%% {P1, P2};
 play_bingo([], _, _, Winners) ->
     First = hd(Winners),
     Last = hd(lists:reverse(Winners)),
@@ -50,6 +49,10 @@ play_bingo([Number|Rest], Played, Boards, Winners) ->
                        Winners);
 
         [WinningBoard|_] ->
+            %% Multiple boards may win in the same round, but this
+            %% does not seem to affect the result; the first and last
+            %% winning board turn up in round where they are the only
+            %% winning board.
             play_bingo(Rest, NewPlayed, Boards -- WinningBoards,
                        Winners ++ [{NewPlayed, WinningBoard}])
     end.
