@@ -79,52 +79,19 @@ parse(_Binary) ->
      787, 408, 442, 603, 681, 522, 478, 1072, 527, 1094, 104, 1267, 418, 730, 217, 1198, 859].
 
 -spec solve1(Input :: input_type()) -> result_type().
-solve1(Input) ->
-    min_fuel(Input).
+solve1(List) ->
+    lists:min([lists:sum([abs(Pos - X) || X <- List])
+               || Pos
+                      <- lists:seq(
+                             lists:min(List), lists:max(List))]).
 
 -spec solve2(Input :: input_type()) -> result_type().
-solve2(Input) ->
-    min_fuel2(Input).
-
-min_fuel(List) ->
-    Min = lists:min(List),
-    Max = lists:max(List),
-    lists:min([fuel(Pos, List) || Pos <- lists:seq(Min, Max)]).
-
-fuel(Pos, List) ->
-    lists:sum([abs(Pos - X) || X <- List]).
-
-min_fuel2(List) ->
-    Min = lists:min(List),
-    Max = lists:max(List),
-    lists:min([fuel2(Pos, List) || Pos <- lists:seq(Min, Max)]).
-
-fuel2(Pos, List) ->
-    lists:sum([fuel_cost2(X, Pos) || X <- List]).
-
-fuel_cost2(X, Y) when X > Y ->
-    fuel_cost2(Y, X);
-fuel_cost2(X, Y) ->
-    Len = Y - X,
-    Len * (Len + 1) div 2.
-
-%% 7 - 10 : 1 (to 8), 2 (to 9), 3 (to 10) = 1 + 2 + 3 = 6
-
-%% Tests
-
--ifdef(TEST).
-
-ex1_test() ->
-    List = [16, 1, 2, 0, 4, 2, 7, 1, 2, 14],
-    ?assertEqual(37, fuel(2, List)),
-    ?assertEqual(41, fuel(1, List)),
-    ?assertEqual(39, fuel(3, List)),
-    ?assertEqual(71, fuel(10, List)),
-    ?assertEqual(37, min_fuel(List)).
-
-ex2_test() ->
-    ?assertEqual(66, fuel_cost2(16, 5)),
-    ?assertEqual(45, fuel_cost2(14, 5)),
-    ?assertEqual(15, fuel_cost2(0, 5)).
-
--endif.
+solve2(List) ->
+    lists:min([lists:sum([begin
+                              Len = abs(Pos - X),
+                              Len * (Len + 1) div 2
+                          end
+                          || X <- List])
+               || Pos
+                      <- lists:seq(
+                             lists:min(List), lists:max(List))]).
