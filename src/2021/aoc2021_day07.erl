@@ -78,12 +78,14 @@ parse(_Binary) ->
      192, 199, 250, 1001, 496, 281, 361, 664, 248, 1090, 86, 203, 241, 61, 329, 1551, 182, 790,
      787, 408, 442, 603, 681, 522, 478, 1072, 527, 1094, 104, 1267, 418, 730, 217, 1198, 859].
 
+-define(MIN, 0).
+-define(MAX, 1903).
+
 -spec solve1(Input :: input_type()) -> result_type().
 solve1(List) ->
     lists:min([lists:sum([abs(Pos - X) || X <- List])
                || Pos
-                      <- lists:seq(
-                             lists:min(List), lists:max(List))]).
+                      <- lists:seq(?MIN, ?MAX)]).
 
 -spec solve2(Input :: input_type()) -> result_type().
 solve2(List) ->
@@ -93,5 +95,4 @@ solve2(List) ->
                           end
                           || X <- List])
                || Pos
-                      <- lists:seq(
-                             lists:min(List), lists:max(List))]).
+                      <- lists:seq(?MIN, ?MAX)]).
