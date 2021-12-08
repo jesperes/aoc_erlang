@@ -17,7 +17,7 @@ info() ->
                 expected = {548, 1074888},
                 has_input_file = true}.
 
--type input_type() :: any().
+-type input_type() :: [{[atom()], [atom()]}].
 -type result_type() :: integer().
 
 -spec parse(Binary :: binary()) -> input_type().
