@@ -8,7 +8,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([info/1, parse/2, solve/2, solve1/2, solve2/2, run_puzzle/1, read_input/1,
-         mktest/1, label/1]).
+         mktest/1, label/1, run_one/1]).
 
 -optional_callbacks([solve/1, solve1/1, solve2/1]).
 
@@ -52,6 +52,9 @@ read_input(Info) ->
         false ->
             <<>>
     end.
+
+run_one(Module) ->
+    run_puzzle(info(Module)).
 
 % -define(DETAILED_TIMING, true).
 
