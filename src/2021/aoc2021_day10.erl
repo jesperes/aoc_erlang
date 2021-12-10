@@ -19,7 +19,7 @@ info() ->
                 use_one_solver_fun = true}.
 
 -type input_type() :: [binary()].
--type result_type() :: integer().
+-type result_type() :: {integer(), integer()}.
 
 -spec parse(Binary :: binary()) -> input_type().
 parse(Binary) ->
@@ -29,8 +29,7 @@ parse(Binary) ->
 solve(Input) ->
     {P1, P2} =
         lists:foldl(fun(Line, {P1, P2}) ->
-                       M = match_pairs(Line),
-                       case M of
+                       case match_pairs(Line) of
                            {nomatch, Rest} -> {count(Rest) + P1, P2};
                            {incomplete, Completion} -> {P1, [completion_score(Completion, 0) | P2]}
                        end
@@ -41,11 +40,8 @@ solve(Input) ->
 
 middle_score(List) ->
     L0 = lists:sort(List),
-    Len = length(L0),
-    lists:nth(Len div 2 + 1, L0).
+    lists:nth(length(L0) div 2 + 1, L0).
 
-count({nomatch, Bin}) ->
-    count(Bin);
 count(<<$), _/binary>>) ->
     3;
 count(<<$], _/binary>>) ->
@@ -53,9 +49,7 @@ count(<<$], _/binary>>) ->
 count(<<$}, _/binary>>) ->
     1197;
 count(<<$>, _/binary>>) ->
-    25137;
-count(_) ->
-    0.
+    25137.
 
 completion_score(<<>>, Acc) ->
     Acc;
