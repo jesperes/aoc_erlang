@@ -86,31 +86,3 @@ valid_coords(_, _, _) ->
 
 read_pos(X, Y, {Width, _, Binary}) ->
     binary:at(Binary, Y * (Width + 1) + X).
-
--ifdef(TEST).
-
-read_pos_test() ->
-    Input = parse(<<"123\n456\n789\n">>),
-    ?assertEqual(5, read_pos(1, 1, Input)).
-
-valid_coords_test() ->
-    Input = parse(<<"123\n456\n789\n">>),
-    ?assert(valid_coords(0, 0, Input)),
-    ?assert(valid_coords(2, 2, Input)),
-    ?assert(valid_coords(1, 2, Input)),
-    ?assert(valid_coords(2, 1, Input)),
-    ?assertNot(valid_coords(-1, -1, Input)),
-    ?assertNot(valid_coords(3, 3, Input)),
-    ?assertNot(valid_coords(-1, 3, Input)),
-    ?assertNot(valid_coords(3, -1, Input)).
-
-ex1_test() ->
-    Input = parse(<<"2199943210\n3987894921\n9856789892\n8767896789\n9899965678\n">>),
-    ?assertEqual(15, solve1(Input)).
-
-ex2_test() ->
-    Input = parse(<<"2199943210\n3987894921\n9856789892\n8767896789\n9899965678\n">>),
-    B = fill({9, 0}, gb_sets:new(), Input),
-    ?assertEqual(9, gb_sets:size(B)).
-
--endif.
