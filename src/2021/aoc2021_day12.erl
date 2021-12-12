@@ -47,36 +47,33 @@ add_edge(G, X, Y) ->
 
 -spec solve1(Input :: input_type()) -> result_type().
 solve1(G) ->
-    length(find_all_paths2(G, start, sets:new(), [], [], fun allow_small_cave_visit/2)).
+    length(find_all_paths(G, start, sets:new(), [], [], fun allow_small_cave_visit/2)).
 
 -spec solve2(Input :: input_type()) -> result_type().
 solve2(G) ->
-    length(find_all_paths2(G, start, sets:new(), [], [], fun allow_small_cave_visit2/2)).
+    length(find_all_paths(G, start, sets:new(), [], [], fun allow_small_cave_visit2/2)).
 
 cave_size(start) ->
     large;
 cave_size('end') ->
     large;
-cave_size(Name) ->
-    [N | _] = atom_to_list(Name),
-    if N >= $A andalso N =< $Z ->
-           large;
-       true ->
-           small
-    end.
+cave_size(Name) when Name =< 'ZZZ' ->
+    large;
+cave_size(_) ->
+    small.
 
-find_all_paths2(G, Node, Visited, CurrentPath, Paths, Fun) ->
+find_all_paths(G, Node, Visited, CurrentPath, Paths, Fun) ->
     case {Node, cave_size(Node), Fun(Node, CurrentPath)} of
         {'end', _, _} ->
-            P = lists:reverse([Node | CurrentPath]),
-            [P | Paths];
+            [[Node | CurrentPath] | Paths];
         {_, small, false} ->
+
             Paths;
         {_, _, _F} ->
             Visited0 = sets:add_element(Node, Visited),
             Nbrs = digraph:out_neighbours(G, Node),
             lists:foldl(fun(Nbr, PathsIn) ->
-                           find_all_paths2(G, Nbr, Visited0, [Node | CurrentPath], PathsIn, Fun)
+                           find_all_paths(G, Nbr, Visited0, [Node | CurrentPath], PathsIn, Fun)
                         end,
                         Paths,
                         Nbrs)
