@@ -47,11 +47,11 @@ add_edge(G, X, Y) ->
 
 -spec solve1(Input :: input_type()) -> result_type().
 solve1(G) ->
-    length(find_all_paths(G, start, sets:new(), [], [], 0)).
+    length(find_all_paths2(G, start, sets:new(), [], [], fun allow_small_cave_visit/2)).
 
 -spec solve2(Input :: input_type()) -> result_type().
 solve2(G) ->
-    length(find_all_paths2(G, start, sets:new(), [], [], 0)).
+    length(find_all_paths2(G, start, sets:new(), [], [], fun allow_small_cave_visit2/2)).
 
 cave_size(start) ->
     large;
@@ -65,35 +65,8 @@ cave_size(Name) ->
            small
     end.
 
-find_all_paths(G, Node, Visited, CurrentPath, Paths, Depth) ->
-    CurrentPath0 = [Node | CurrentPath],
-    Visited0 = sets:add_element(Node, Visited),
-    Nbrs = digraph:out_neighbours(G, Node),
-    lists:foldl(fun(Nbr, PathsIn) ->
-                   case Nbr of
-                       'end' ->
-                           P = ['end' | CurrentPath0],
-                           [P | PathsIn];
-                       _ ->
-                           case {cave_size(Nbr), sets:is_element(Nbr, Visited0)} of
-                               {small, true} -> PathsIn;
-                               _ ->
-                                   find_all_paths(G,
-                                                  Nbr,
-                                                  Visited0,
-                                                  CurrentPath0,
-                                                  PathsIn,
-                                                  Depth + 1)
-                           end
-                   end
-                end,
-                Paths,
-                Nbrs).
-
-find_all_paths2(_, _, _, _, _, Depth) when Depth > 100 ->
-    throw(stackoverflow);
-find_all_paths2(G, Node, Visited, CurrentPath, Paths, Depth) ->
-    case {Node, cave_size(Node), allow_small_cave_visit(Node, CurrentPath, Depth)} of
+find_all_paths2(G, Node, Visited, CurrentPath, Paths, Fun) ->
+    case {Node, cave_size(Node), Fun(Node, CurrentPath)} of
         {'end', _, _} ->
             P = lists:reverse([Node | CurrentPath]),
             [P | Paths];
@@ -103,18 +76,16 @@ find_all_paths2(G, Node, Visited, CurrentPath, Paths, Depth) ->
             Visited0 = sets:add_element(Node, Visited),
             Nbrs = digraph:out_neighbours(G, Node),
             lists:foldl(fun(Nbr, PathsIn) ->
-                           find_all_paths2(G,
-                                           Nbr,
-                                           Visited0,
-                                           [Node | CurrentPath],
-                                           PathsIn,
-                                           Depth + 1)
+                           find_all_paths2(G, Nbr, Visited0, [Node | CurrentPath], PathsIn, Fun)
                         end,
                         Paths,
                         Nbrs)
     end.
 
-allow_small_cave_visit(Node, Path, _Depth) ->
+allow_small_cave_visit(Node, Path) ->
+    not lists:member(Node, Path).
+
+allow_small_cave_visit2(Node, Path) ->
     Map = lists:foldl(fun(N, Acc) ->
                          case cave_size(N) of
                              small -> maps:update_with(N, fun(Old) -> Old + 1 end, 1, Acc);
