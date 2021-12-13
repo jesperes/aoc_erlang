@@ -47,11 +47,11 @@ add_edge(G, X, Y) ->
 
 -spec solve1(Input :: input_type()) -> result_type().
 solve1(G) ->
-    length(find_all_paths(G, start, [], [], fun allow_small_cave_visit/2)).
+    find_all_paths(G, start, #{}, 0, fun allow_small_cave_visit/2).
 
 -spec solve2(Input :: input_type()) -> result_type().
 solve2(G) ->
-    length(find_all_paths(G, start, [], [], fun allow_small_cave_visit2/2)).
+    find_all_paths(G, start, #{}, 0, fun allow_small_cave_visit2/2).
 
 cave_size(start) ->
     large;
@@ -62,19 +62,17 @@ cave_size(Name) when Name =< 'ZZZ' ->
 cave_size(_) ->
     small.
 
-find_all_paths(G, Node, CurrentPath, Paths, Fun) ->
+find_all_paths(_, 'end', _CurrentPath, NumPaths, _Fun) ->
+    NumPaths + 1;
+find_all_paths(G, Node, CurrentPath, NumPaths, Fun) ->
     case {Node, cave_size(Node), Fun(Node, CurrentPath)} of
-        {'end', _, _} ->
-            [[Node | CurrentPath] | Paths];
         {_, small, false} ->
-            Paths;
+            NumPaths;
         {_, _, _F} ->
-            Nbrs = digraph:out_neighbours(G, Node),
-            lists:foldl(fun(Nbr, PathsIn) ->
-                           find_all_paths(G, Nbr, [Node | CurrentPath], PathsIn, Fun)
-                        end,
-                        Paths,
-                        Nbrs)
+            NewCurrentPath = maps:update_with(
+            lists:foldl(fun(Nbr, Acc) -> find_all_paths(G, Nbr, [Node | CurrentPath], Acc, Fun) end,
+                        NumPaths,
+                        digraph:out_neighbours(G, Node))
     end.
 
 allow_small_cave_visit(Node, Path) ->
