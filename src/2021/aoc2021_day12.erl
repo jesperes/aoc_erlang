@@ -47,59 +47,63 @@ add_edge(G, X, Y) ->
 
 -spec solve1(Input :: input_type()) -> result_type().
 solve1(G) ->
-    find_all_paths(G, start, #{}, 0, fun allow_small_cave_visit/2).
+    find_all_paths(G, start, #{}, 0, fun allow_small_cave_visit/3).
 
 -spec solve2(Input :: input_type()) -> result_type().
 solve2(G) ->
-    find_all_paths(G, start, #{}, 0, fun allow_small_cave_visit2/2).
+    find_all_paths(G, start, #{}, 0, fun allow_small_cave_visit2/3).
 
-cave_size(start) ->
-    large;
-cave_size('end') ->
-    large;
-cave_size(Name) when Name =< 'ZZZ' ->
-    large;
+cave_size(Name) when Name > '_' ->
+    small;
 cave_size(_) ->
-    small.
+    large.
 
-find_all_paths(_, 'end', _CurrentPath, NumPaths, _Fun) ->
+find_all_paths(_, 'end', _State, NumPaths, _Fun) ->
     NumPaths + 1;
-find_all_paths(G, Node, CurrentPath, NumPaths, Fun) ->
-    case {Node, cave_size(Node), Fun(Node, CurrentPath)} of
+find_all_paths(G, Node, State, NumPaths, Fun) ->
+    CaveSize = cave_size(Node),
+    case {Node, CaveSize, Fun(Node, CaveSize, State)} of
         {_, small, false} ->
             NumPaths;
-        {_, _, _F} ->
-    %             NewCurrentPath = maps:update_with(
-            lists:foldl(fun(Nbr, Acc) -> find_all_paths(G, Nbr, [Node | CurrentPath], Acc, Fun) end,
+        {_, small, true} ->
+            %% For small caves, we update the freqency map
+            State0 = maps:update_with(Node, fun(Old) -> Old + 1 end, 1, State),
+            lists:foldl(fun(Nbr, Acc) -> find_all_paths(G, Nbr, State0, Acc, Fun) end,
+                        NumPaths,
+                        digraph:out_neighbours(G, Node));
+        {_, large, _} ->
+            lists:foldl(fun(Nbr, Acc) -> find_all_paths(G, Nbr, State, Acc, Fun) end,
                         NumPaths,
                         digraph:out_neighbours(G, Node))
     end.
 
-allow_small_cave_visit(Node, Path) ->
-    not lists:member(Node, Path).
+%% Functions to determine whether we are allow to visit small caves.
+allow_small_cave_visit(_, large, _) ->
+    true;
+allow_small_cave_visit(Node, _, Map) ->
+    not maps:is_key(Node, Map).
 
-allow_small_cave_visit2(Node, Path) ->
-    Map = lists:foldl(fun(N, Acc) ->
-                         case cave_size(N) of
-                             small -> maps:update_with(N, fun(Old) -> Old + 1 end, 1, Acc);
-                             _ -> Acc
-                         end
-                      end,
-                      #{},
-                      Path),
-    case maps:size(Map) of
-        0 ->
-            true;
-        _ ->
-            MaxFreq =
-                lists:max(
-                    maps:values(Map)),
-            case {cave_size(Node), MaxFreq, maps:get(Node, Map, 0)} of
-                {small, MF, F} when MF >= 2 andalso F >= 1 ->
+allow_small_cave_visit2(_, large, _) ->
+    true;
+allow_small_cave_visit2(Node, _, Map) ->
+    case max_value(Map) of
+        Max when Max >= 2 ->
+            case maps:get(Node, Map, 0) of
+                Freq when Freq >= 1 ->
                     false;
                 _ ->
                     true
-            end
+            end;
+        _ ->
+            true
+    end.
+
+max_value(Map) ->
+    case maps:values(Map) of
+        [] ->
+            0;
+        Values ->
+            lists:max(Values)
     end.
 
 btoa(B) when is_binary(B) ->
@@ -113,10 +117,5 @@ ex1_test() ->
     Binary = <<"start-A\nstart-b\nA-c\nA-b\nb-d\nA-end\nb-end\n">>,
     ?assertEqual(10, solve1(parse(Binary))),
     ?assertEqual(36, solve2(parse(Binary))).
-
-% freq_test() ->
-%     ?assertEqual(none, freq([start, 'A', 'end'])),
-%     ?assertEqual({3, a}, freq([a, b, a, c, a, b, d, e])),
-%     ?assertEqual({3, a}, freq([start, a, 'A', b, a, c, a, b, d, e])).
 
 -endif.
