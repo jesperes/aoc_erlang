@@ -69,7 +69,7 @@ find_all_paths(G, Node, CurrentPath, NumPaths, Fun) ->
         {_, small, false} ->
             NumPaths;
         {_, _, _F} ->
-            NewCurrentPath = maps:update_with(
+    %             NewCurrentPath = maps:update_with(
             lists:foldl(fun(Nbr, Acc) -> find_all_paths(G, Nbr, [Node | CurrentPath], Acc, Fun) end,
                         NumPaths,
                         digraph:out_neighbours(G, Node))
