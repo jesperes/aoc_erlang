@@ -45,24 +45,25 @@ parse(Binary) ->
     {Coords, lists:reverse(Folds)}.
 
 -spec solve1(Input :: input_type()) -> result1_type().
-solve1({Coords, [{Dir, Num} | _] = _Folds}) ->
-    sets:size(fold(Dir, Num, Coords)).
+solve1({Coords, [First | _] = _Folds}) ->
+    sets:size(fold(First, Coords)).
 
 -spec solve2(Input :: input_type()) -> result2_type().
 solve2({Coords, Folds}) ->
-    FoldedCoords =
-        lists:foldl(fun({Dir, Num}, Acc) -> fold(Dir, Num, Acc) end, Coords, Folds),
-    set_to_str(FoldedCoords).
+    set_to_str(lists:foldl(fun fold/2, Coords, Folds)).
 
-fold(Dir, Num, Coords) ->
-    sets:fold(fun ({X, Y}, Acc) when Dir =:= y andalso Y > Num ->
-                      %% horizontal fold
-                      sets:add_element({X, 2 * Num - Y}, Acc);
-                  ({X, Y}, Acc) when Dir =:= x andalso X > Num ->
-                      %% vertical fold
+fold({x, Num}, Coords) ->
+    sets:fold(fun ({X, Y}, Acc) when X > Num ->
                       sets:add_element({2 * Num - X, Y}, Acc);
                   (Coord, Acc) ->
-                      %% above/left of fold, keep as-is
+                      sets:add_element(Coord, Acc)
+              end,
+              sets:new(),
+              Coords);
+fold({y, Num}, Coords) ->
+    sets:fold(fun ({X, Y}, Acc) when Y > Num ->
+                      sets:add_element({X, 2 * Num - Y}, Acc);
+                  (Coord, Acc) ->
                       sets:add_element(Coord, Acc)
               end,
               sets:new(),
@@ -87,19 +88,3 @@ set_to_str(Set) ->
            ++ "\n"
            || Y <- lists:seq(0, YMax)],
     lists:flatten(Str).
-
-%% Tests
--ifdef(TEST).
-
-ex1_test() ->
-    Binary =
-        <<"6,10\n0,14\n9,10\n0,3\n10,4\n4,11\n6,0\n6,12\n4,1\n0,13\n10,12\n3,4\n"
-          "3,0\n8,4\n1,10\n2,14\n8,10\n9,0\n\nfold along y=7\nfold along "
-          "x=5\n">>,
-    {Coords, _} = parse(Binary),
-    Coords0 = fold(y, 7, Coords),
-    Coords1 = fold(x, 5, Coords0),
-    ?debugFmt("~n~s", [set_to_str(Coords1)]),
-    ?assertEqual(17, sets:size(Coords1)).
-
--endif.
