@@ -7,8 +7,9 @@
 -include_lib("stdlib/include/assert.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--export([info/1, parse/2, solve/2, solve1/2, solve2/2, run_puzzle/1, read_input/1,
-         mktest/1, label/1, run_one/1]).
+-export([info/1, parse/2, solve/2, solve1/2, solve2/2, run_puzzle/1, run_puzzle/2,
+         read_input/1, mktest/1, label/1, run_one/1, perftest/1, perftest/2, run/1,
+         aoc2021_perftest/0]).
 
 -optional_callbacks([solve/1, solve1/1, solve2/1]).
 
@@ -63,7 +64,8 @@ run_one(Module) ->
 run_puzzle(Info) ->
     {TInput, Input} = timer:tc(fun() -> read_input(Info) end),
     {TPuzzle, Value} = timer:tc(fun() -> run_puzzle(Info, Input) end),
-    ?debugFmt("~s: parsing=~p puzzle=~p total=~p", [label(Info), TInput, TPuzzle, TInput + TPuzzle]),
+    ?debugFmt("~s: parsing=~p puzzle=~p total=~p",
+              [label(Info), TInput, TPuzzle, TInput + TPuzzle]),
     Value.
 
 -else.
@@ -106,3 +108,31 @@ label(Info) ->
     Day = Info#aoc_puzzle.day,
     lists:flatten(
         io_lib:format("~w Day ~2..0w: ~s", [Year, Day, Info#aoc_puzzle.name])).
+
+run(Module) ->
+    Info = info(Module),
+    Input = read_input(Info),
+    run_puzzle(Info, Input).
+
+perftest(Module) ->
+    perftest(Module, timer:seconds(5)).
+
+perftest(Module, Time) ->
+    perftest:test([{aoc_puzzle, run, [Module]}], Time).
+
+aoc2021_perftest() ->
+    Fs = lists:map(fun(M) -> {aoc_puzzle, run, [M]} end,
+                   [aoc2021_day01,
+                    aoc2021_day02,
+                    aoc2021_day03,
+                    aoc2021_day04,
+                    aoc2021_day05,
+                    aoc2021_day06,
+                    aoc2021_day07,
+                    aoc2021_day08,
+                    aoc2021_day09,
+                    aoc2021_day10,
+                    aoc2021_day11,
+                    aoc2021_day12,
+                    aoc2021_day13]),
+    perftest:test(Fs, timer:seconds(20)).

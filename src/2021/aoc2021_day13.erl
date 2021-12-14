@@ -24,7 +24,7 @@ info() ->
                      ++ "#....#....####.#..#.###..####..##..####\n"},
                 has_input_file = true}.
 
--type input_type() :: {sets:set(), [{atom(), integer()}]}.
+-type input_type() :: {map(), [{atom(), integer()}]}.
 -type result1_type() :: integer().
 -type result2_type() :: string().
 
@@ -34,43 +34,43 @@ parse(Binary) ->
         lists:foldl(fun(B, {Coords, Folds}) ->
                        case string:tokens(binary_to_list(B), ",= ") of
                            [X, Y] ->
-                               {sets:add_element({list_to_integer(X), list_to_integer(Y)}, Coords),
+                               {maps:put({list_to_integer(X), list_to_integer(Y)}, true, Coords),
                                 Folds};
                            ["fold", "along", Dir, Num] ->
                                {Coords, [{list_to_atom(Dir), list_to_integer(Num)} | Folds]}
                        end
                     end,
-                    {sets:new(), []},
+                    {#{}, []},
                     binary:split(Binary, <<"\n">>, [trim_all, global])),
     {Coords, lists:reverse(Folds)}.
 
 -spec solve1(Input :: input_type()) -> result1_type().
 solve1({Coords, [First | _] = _Folds}) ->
-    sets:size(fold(First, Coords)).
+    maps:size(fold(First, Coords)).
 
 -spec solve2(Input :: input_type()) -> result2_type().
 solve2({Coords, Folds}) ->
-    set_to_str(lists:foldl(fun fold/2, Coords, Folds)).
+    to_str(lists:foldl(fun fold/2, Coords, Folds)).
 
 fold({x, Num}, Coords) ->
-    sets:fold(fun ({X, Y}, Acc) when X > Num ->
-                      sets:add_element({2 * Num - X, Y}, Acc);
-                  (Coord, Acc) ->
-                      sets:add_element(Coord, Acc)
+    maps:fold(fun ({X, Y}, _, Acc) when X > Num ->
+                      maps:put({2 * Num - X, Y}, true, Acc);
+                  (Coord, _, Acc) ->
+                      maps:put(Coord, true, Acc)
               end,
-              sets:new(),
+              #{},
               Coords);
 fold({y, Num}, Coords) ->
-    sets:fold(fun ({X, Y}, Acc) when Y > Num ->
-                      sets:add_element({X, 2 * Num - Y}, Acc);
-                  (Coord, Acc) ->
-                      sets:add_element(Coord, Acc)
+    maps:fold(fun ({X, Y}, _, Acc) when Y > Num ->
+                      maps:put({X, 2 * Num - Y}, true, Acc);
+                  (Coord, _, Acc) ->
+                      maps:put(Coord, true, Acc)
               end,
-              sets:new(),
+              #{},
               Coords).
 
-set_to_str(Set) ->
-    Coords = sets:to_list(Set),
+to_str(Set) ->
+    Coords = maps:keys(Set),
     XMax =
         lists:max(
             lists:map(fun({X, _}) -> X end, Coords)),
@@ -78,7 +78,7 @@ set_to_str(Set) ->
         lists:max(
             lists:map(fun({_, Y}) -> Y end, Coords)),
 
-    Str = [[case sets:is_element({X, Y}, Set) of
+    Str = [[case maps:is_key({X, Y}, Set) of
                 true ->
                     $#;
                 false ->
