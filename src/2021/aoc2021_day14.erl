@@ -50,20 +50,21 @@ do_n_steps({Root, Rules}, N) ->
     Values = maps:values(FinalLetterCounts),
     lists:max(Values) - lists:min(Values).
 
+%% Keep track of how many pairs and how many letters we have of each,
+%% but we do not need to keep track of the entire string.
 do_one_step2(Rules, {PairCounts, LetterCounts}) ->
-    lists:foldl(fun([A, B] = Pair, {PairCountIn, LetterCountIn}) ->
-                   %% When applying AB -> C, all AB:s will be replaced by an equivalent number
-                   %% of AC:s and CB:s.
-                   [C] = maps:get(Pair, Rules),
-                   PairCount = maps:get(Pair, PairCounts),
-                   PC0 = maps:update_with(Pair, fun(N) -> N - PairCount end, PairCountIn),
-                   PC1 = maps:update_with([A, C], fun(N) -> N + PairCount end, PairCount, PC0),
-                   PC2 = maps:update_with([C, B], fun(N) -> N + PairCount end, PairCount, PC1),
-                   LC0 = maps:update_with(C, fun(N) -> N + PairCount end, PairCount, LetterCountIn),
-                   {PC2, LC0}
-                end,
-                {PairCounts, LetterCounts},
-                maps:keys(PairCounts)).
+    maps:fold(fun([A, B] = Pair, PairCount, {PairCountIn, LetterCountIn}) ->
+                 %% When applying AB -> C, all AB:s will be replaced by an equivalent number
+                 %% of AC:s and CB:s. Update the pair- and letter-counts accordingly.
+                 [C] = maps:get(Pair, Rules),
+                 PC0 = maps:update_with(Pair, fun(N) -> N - PairCount end, PairCountIn),
+                 PC1 = maps:update_with([A, C], fun(N) -> N + PairCount end, PairCount, PC0),
+                 PC2 = maps:update_with([C, B], fun(N) -> N + PairCount end, PairCount, PC1),
+                 LC0 = maps:update_with(C, fun(N) -> N + PairCount end, PairCount, LetterCountIn),
+                 {PC2, LC0}
+              end,
+              {PairCounts, LetterCounts},
+              PairCounts).
 
 pair_freqs([_], Map) ->
     Map;
