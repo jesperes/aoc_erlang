@@ -31,29 +31,27 @@ parse(Binary) ->
 
 -spec solve1(Input :: input_type()) -> result_type().
 solve1(Input) ->
-    find(Input, ?WIDTH, ?HEIGHT).
+    find(Input).
 
 -spec solve2(Input :: input_type()) -> result_type().
 solve2(Input) ->
-    find(Input, ?WIDTH, ?HEIGHT).
+    find(Input).
 
-find(Input, W, H) ->
+find(Input) ->
     Start = {0, 0},
     find(#{Start => 0}, % actual cost to position
-         gb_sets:singleton({heuristic(Start, W, H), Start}),
-         Input,
-         W,
-         H).
+         gb_sets:singleton({heuristic(Start), Start}),
+         Input).
 
 %% Cost of moving to a coordinate.
-edge_weight({X, Y}, W, _H, Grid) ->
-    binary:at(Grid, Y * (W + 1) + X) - $0.
+edge_weight({X, Y}, Grid) ->
+    binary:at(Grid, Y * (?WIDTH + 1) + X) - $0.
 
-heuristic({X, Y}, W, H) ->
-    abs(W - 1 - X) + abs(H - 1 - Y).
+heuristic({X, Y}) ->
+    abs(?WIDTH - 1 - X) + abs(?HEIGHT- 1 - Y).
 
 %% A* implementation
-find(Gs, Fs, Grid, W, H) ->
+find(Gs, Fs, Grid) ->
     {{Dist, Curr}, Fs0} = gb_sets:take_smallest(Fs),
     case Curr of
         {X, Y} when ?IS_GOAL(X, Y) ->
@@ -66,13 +64,13 @@ find(Gs, Fs, Grid, W, H) ->
                                          andalso Ya >= 0
                                          andalso Ya < ?HEIGHT ->
                                     MaybeNewScore =
-                                        maps:get(Curr, Gs) + edge_weight(Coord, W, H, Grid),
+                                        maps:get(Curr, Gs) + edge_weight(Coord, Grid),
                                     case MaybeNewScore < maps:get(Coord, Gs, infinity) of
                                         true ->
                                             %% This path is better than previously known
                                             GsOut = maps:put(Coord, MaybeNewScore, GsIn),
                                             FsOut =
-                                                gb_sets:add({MaybeNewScore + heuristic(Coord, W, H),
+                                                gb_sets:add({MaybeNewScore + heuristic(Coord),
                                                              Coord},
                                                             FsIn),
                                             {GsOut, FsOut};
@@ -85,7 +83,7 @@ find(Gs, Fs, Grid, W, H) ->
                             end,
                             {Gs, Fs0},
                             lists:map(fun({Dx, Dy}) -> {X + Dx, Y + Dy} end, ?DELTAS)),
-            find(NewGs, NewFs, Grid, W, H)
+            find(NewGs, NewFs, Grid)
     end.
 
 %% Tests
