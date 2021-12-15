@@ -24,11 +24,10 @@ info() ->
 -define(HEIGHT, 100).
 -define(IS_GOAL(X, Y, Tiles), X == ?WIDTH * Tiles - 1 andalso Y == ?HEIGHT * Tiles - 1).
 -define(DELTAS, [{-1, 0}, {0, -1}, {1, 0}, {0, 1}]).
-
-% Code the entries in the open set into a single integer instead of a {Dist, {X,
-% Y}} tuple. This seems to gain a bit in performance.
--define(MAKE_KEY(Dist, X, Y), Dist bsl 32 bor (X band 16#ffff bsl 16) bor Y band 16#ffff).
--define(EXTRACT_KEY(F), {F bsr 32, {(F bsr 16) band 16#ffff, F band 16#ffff}}).
+% Code the entries in the open set into a single 32-bit integer instead of a
+% {Dist, {X, Y}} tuple. This seems to gain a bit in performance.
+-define(MAKE_KEY(Dist, X, Y), Dist bsl 24 bor (X bsl 12) bor Y).
+-define(EXTRACT_KEY(F), {F bsr 24, {(F bsr 12) band 16#fff, F band 16#fff}}).
 
 -spec parse(Binary :: binary()) -> input_type().
 parse(Binary) ->
