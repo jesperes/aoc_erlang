@@ -31,33 +31,29 @@ parse(Binary) ->
 
 -spec solve1(Input :: input_type()) -> result_type().
 solve1(Input) ->
-    find(Input, ?WIDTH, ?HEIGHT, fun edge_weight_part1/4).
+    find(Input, ?WIDTH, ?HEIGHT).
 
 -spec solve2(Input :: input_type()) -> result_type().
 solve2(Input) ->
-    find(Input, ?WIDTH, ?HEIGHT, fun edge_weight_part2/4).
+    find(Input, ?WIDTH, ?HEIGHT).
 
-find(Input, W, H, WeightFun) ->
+find(Input, W, H) ->
     Start = {0, 0},
     find(#{Start => 0}, % actual cost to position
          gb_sets:singleton({heuristic(Start, W, H), Start}),
          Input,
-         WeightFun,
          W,
          H).
 
 %% Cost of moving to a coordinate.
-edge_weight_part1({X, Y}, W, _H, Grid) ->
-    binary:at(Grid, Y * (W + 1) + X) - $0.
-
-edge_weight_part2({X, Y}, W, _H, Grid) ->
+edge_weight({X, Y}, W, _H, Grid) ->
     binary:at(Grid, Y * (W + 1) + X) - $0.
 
 heuristic({X, Y}, W, H) ->
     abs(W - 1 - X) + abs(H - 1 - Y).
 
 %% A* implementation
-find(Gs, Fs, Grid, WeightFun, W, H) ->
+find(Gs, Fs, Grid, W, H) ->
     {{Dist, Curr}, Fs0} = gb_sets:take_smallest(Fs),
     case Curr of
         {X, Y} when ?IS_GOAL(X, Y) ->
@@ -70,7 +66,7 @@ find(Gs, Fs, Grid, WeightFun, W, H) ->
                                          andalso Ya >= 0
                                          andalso Ya < ?HEIGHT ->
                                     MaybeNewScore =
-                                        maps:get(Curr, Gs) + WeightFun(Coord, W, H, Grid),
+                                        maps:get(Curr, Gs) + edge_weight(Coord, W, H, Grid),
                                     case MaybeNewScore < maps:get(Coord, Gs, infinity) of
                                         true ->
                                             %% This path is better than previously known
@@ -89,7 +85,7 @@ find(Gs, Fs, Grid, WeightFun, W, H) ->
                             end,
                             {Gs, Fs0},
                             lists:map(fun({Dx, Dy}) -> {X + Dx, Y + Dy} end, ?DELTAS)),
-            find(NewGs, NewFs, Grid, WeightFun, W, H)
+            find(NewGs, NewFs, Grid, W, H)
     end.
 
 %% Tests
