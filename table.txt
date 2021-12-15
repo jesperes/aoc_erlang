@@ -1,3 +1,0 @@
-Year@Day@Name@Time (msecs)
-2021@13@Transparent Origami@5.316
-@@Total time@0.007108 secs

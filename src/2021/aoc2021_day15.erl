@@ -14,16 +14,21 @@ info() ->
                 year = 2021,
                 day = 15,
                 name = "Chiton",
-                expected = {386, 0},
+                expected = {386, 2806},
                 has_input_file = true}.
 
 -type input_type() :: any().
 -type result_type() :: integer().
 
--define(WIDTH, 10).
--define(HEIGHT, 10).
+-define(WIDTH, 100).
+-define(HEIGHT, 100).
 -define(IS_GOAL(X, Y, Tiles), X == ?WIDTH * Tiles - 1 andalso Y == ?HEIGHT * Tiles - 1).
 -define(DELTAS, [{-1, 0}, {0, -1}, {1, 0}, {0, 1}]).
+
+% Code the entries in the open set into a single integer instead of a {Dist, {X,
+% Y}} tuple. This seems to gain a bit in performance.
+-define(MAKE_KEY(Dist, X, Y), Dist bsl 32 bor (X band 16#ffff bsl 16) bor Y band 16#ffff).
+-define(EXTRACT_KEY(F), {F bsr 32, {(F bsr 16) band 16#ffff, F band 16#ffff}}).
 
 -spec parse(Binary :: binary()) -> input_type().
 parse(Binary) ->
@@ -37,13 +42,11 @@ solve1(Input) ->
 solve2(Input) ->
     find(Input, 5).
 
-%% 1741 too low
-
 find(Input, Tiles) ->
     ?assertEqual($\n, binary:at(Input, ?WIDTH)),
     Start = {0, 0},
     find(#{Start => 0}, % actual cost to position
-         gb_sets:singleton({lower_bound_dist_to_goal(Start, Tiles), Start}),
+         gb_sets:singleton(?MAKE_KEY(lower_bound_dist_to_goal(Start, Tiles), 0, 0)),
          Input,
          Tiles).
 
@@ -54,13 +57,7 @@ edge_weight({X, Y}, Grid) ->
     TileX = X div ?WIDTH,
     TileY = Y div ?HEIGHT,
     Risk = binary:at(Grid, Y0 * (?WIDTH + 1) + X0) - $0,
-    ?assert(Risk >= 1),
-    case Risk + TileX + TileY of
-        R when R > 9 ->
-            1;
-        R ->
-            R
-    end.
+    (Risk + TileX + TileY - 1) rem 9 + 1.
 
 lower_bound_dist_to_goal({X, Y}, Tiles) ->
     GoalX = ?WIDTH * Tiles - 1,
@@ -69,9 +66,8 @@ lower_bound_dist_to_goal({X, Y}, Tiles) ->
 
 %% A* implementation
 find(Gs, Fs, Grid, Tiles) ->
-    {{Dist, Curr} = _P, Fs0} = gb_sets:take_smallest(Fs),
-    % erlang:display({Dist, Curr}),
-    ?assert(Dist >= 0),
+    {F, Fs0} = gb_sets:take_smallest(Fs),
+    {Dist, Curr} = ?EXTRACT_KEY(F),
     case Curr of
         {X, Y} when ?IS_GOAL(X, Y, Tiles) ->
             Dist;
@@ -83,18 +79,16 @@ find(Gs, Fs, Grid, Tiles) ->
                                          andalso Ya >= 0
                                          andalso Ya < ?HEIGHT * Tiles ->
                                     MaybeNewScore = maps:get(Curr, GsIn) + edge_weight(Coord, Grid),
-                                    ?assert(MaybeNewScore >= 0),
                                     case MaybeNewScore < maps:get(Coord, GsIn, infinity) of
                                         true ->
                                             %% This path is better than previously known
                                             BetterScore = MaybeNewScore,
                                             GsOut = maps:put(Coord, BetterScore, GsIn),
-                                            FsOut =
-                                                gb_sets:add({BetterScore
-                                                             + lower_bound_dist_to_goal(Coord,
-                                                                                        Tiles),
-                                                             Coord},
-                                                            FsIn),
+                                            NewDist =
+                                                BetterScore
+                                                + lower_bound_dist_to_goal(Coord, Tiles),
+                                            FKey = ?MAKE_KEY(NewDist, Xa, Ya),
+                                            FsOut = gb_sets:add(FKey, FsIn),
                                             {GsOut, FsOut};
                                         false ->
                                             Acc
@@ -108,41 +102,14 @@ find(Gs, Fs, Grid, Tiles) ->
             find(NewGs, NewFs, Grid, Tiles)
     end.
 
-%% Tests
-
 -ifdef(TEST).
 
-ex1_test() ->
-    Binary =
-        <<"1163751742\n",
-          "1381373672\n",
-          "2136511328\n",
-          "3694931569\n",
-          "7463417111\n",
-          "1319128137\n",
-          "1359912421\n",
-          "3125421639\n",
-          "1293138521\n",
-          "2311944581\n">>,
-    ?assertEqual(40, solve1(Binary)).
-
-ex2_test() ->
-    Binary =
-        <<"1163751742\n",
-          "1381373672\n",
-          "2136511328\n",
-          "3694931569\n",
-          "7463417111\n",
-          "1319128137\n",
-          "1359912421\n",
-          "3125421639\n",
-          "1293138521\n",
-          "2311944581\n">>,
-    ?assertEqual(2, edge_weight({10, 0}, Binary)),
-    ?assertEqual(6, edge_weight({49, 0}, Binary)),
-    ?assertEqual(6, edge_weight({0, 49}, Binary)),
-    ?assertEqual(9, edge_weight({49, 49}, Binary)),
-    ?assertEqual(3, edge_weight({1, 9}, Binary)),
-    ?assertEqual(315, solve2(Binary)).
+f_key_test() ->
+    [begin
+         F = ?MAKE_KEY(Dist, X, Y),
+         Out = ?EXTRACT_KEY(F),
+         ?assertEqual(Out, {Dist, {X, Y}})
+     end
+     || Dist <- lists:seq(1000, 1100), X <- lists:seq(500, 510), Y <- lists:seq(500, 600, 10)].
 
 -endif.

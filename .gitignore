@@ -9,3 +9,5 @@ _checkouts/
 TEST-*.xml
 **/*_parser.erl
 **/*_lexer.erl
+table.txt
+rebar3.crashdump

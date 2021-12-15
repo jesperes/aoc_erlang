@@ -115,7 +115,7 @@ run(Module) ->
     run_puzzle(Info, Input).
 
 perftest(Module) ->
-    perftest(Module, timer:seconds(5)).
+    perftest(Module, timer:seconds(20)).
 
 perftest(Module, Time) ->
     perftest:test([{aoc_puzzle, run, [Module]}], Time).
