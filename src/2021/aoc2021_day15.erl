@@ -26,8 +26,10 @@ info() ->
 -define(DELTAS, [{-1, 0}, {0, -1}, {1, 0}, {0, 1}]).
 % Code the entries in the open set into a single 32-bit integer instead of a
 % {Dist, {X, Y}} tuple. This seems to gain a bit in performance.
--define(MAKE_KEY(Dist, X, Y), Dist bsl 24 bor (X bsl 12) bor Y).
--define(EXTRACT_KEY(F), {F bsr 24, {(F bsr 12) band 16#fff, F band 16#fff}}).
+-define(PACK_F(Dist, X, Y), Dist bsl 24 bor (X bsl 12) bor Y).
+-define(UNPACK_F(F), {F bsr 24, {(F bsr 12) band 16#fff, F band 16#fff}}).
+% Pack coordinates into an 32-bit integer too, using them as keys in the G set.
+-define(PACK_COORD(X, Y), X bsl 12 bor Y).
 
 -spec parse(Binary :: binary()) -> input_type().
 parse(Binary) ->
@@ -44,8 +46,8 @@ solve2(Input) ->
 find(Input, Tiles) ->
     ?assertEqual($\n, binary:at(Input, ?WIDTH)),
     Start = {0, 0},
-    find(#{Start => 0}, % actual cost to position
-         gb_sets:singleton(?MAKE_KEY(lower_bound_dist_to_goal(Start, Tiles), 0, 0)),
+    find(#{?PACK_COORD(0, 0) => 0}, % actual cost to position
+         gb_sets:singleton(?PACK_F(lower_bound_dist_to_goal(Start, Tiles), 0, 0)),
          Input,
          Tiles).
 
@@ -66,28 +68,30 @@ lower_bound_dist_to_goal({X, Y}, Tiles) ->
 %% A* implementation
 find(Gs, Fs, Grid, Tiles) ->
     {F, Fs0} = gb_sets:take_smallest(Fs),
-    {Dist, Curr} = ?EXTRACT_KEY(F),
+    {Dist, Curr} = ?UNPACK_F(F),
     case Curr of
         {X, Y} when ?IS_GOAL(X, Y, Tiles) ->
             Dist;
         {X, Y} ->
+            PackedXY = ?PACK_COORD(X, Y),
             {NewGs, NewFs} =
                 lists:foldl(fun ({Xa, Ya} = Coord, {GsIn, FsIn} = Acc)
                                     when Xa >= 0
                                          andalso Xa < ?WIDTH * Tiles
                                          andalso Ya >= 0
                                          andalso Ya < ?HEIGHT * Tiles ->
-                                    MaybeNewScore = maps:get(Curr, GsIn) + edge_weight(Coord, Grid),
-                                    case MaybeNewScore < maps:get(Coord, GsIn, infinity) of
+                                    PackedCoord = ?PACK_COORD(Xa, Ya),
+                                    MaybeNewScore =
+                                        maps:get(PackedXY, GsIn) + edge_weight(Coord, Grid),
+                                    case MaybeNewScore < maps:get(PackedCoord, GsIn, infinity) of
                                         true ->
                                             %% This path is better than previously known
                                             BetterScore = MaybeNewScore,
-                                            GsOut = maps:put(Coord, BetterScore, GsIn),
+                                            GsOut = maps:put(PackedCoord, BetterScore, GsIn),
                                             NewDist =
                                                 BetterScore
                                                 + lower_bound_dist_to_goal(Coord, Tiles),
-                                            FKey = ?MAKE_KEY(NewDist, Xa, Ya),
-                                            FsOut = gb_sets:add(FKey, FsIn),
+                                            FsOut = gb_sets:add(?PACK_F(NewDist, Xa, Ya), FsIn),
                                             {GsOut, FsOut};
                                         false ->
                                             Acc
@@ -105,8 +109,8 @@ find(Gs, Fs, Grid, Tiles) ->
 
 f_key_test() ->
     [begin
-         F = ?MAKE_KEY(Dist, X, Y),
-         Out = ?EXTRACT_KEY(F),
+         F = ?PACK_F(Dist, X, Y),
+         Out = ?UNPACK_F(F),
          ?assertEqual(Out, {Dist, {X, Y}})
      end
      || Dist <- lists:seq(1000, 1100), X <- lists:seq(500, 510), Y <- lists:seq(500, 600, 10)].
