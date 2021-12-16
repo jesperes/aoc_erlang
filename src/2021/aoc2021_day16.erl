@@ -22,13 +22,11 @@ info() ->
 -type result_type() :: any().
 
 -spec parse(Binary :: binary()) -> input_type().
-parse(<<>>) ->
-    <<>>;
-parse(<<$\n>>) ->
-    <<>>;
-parse(<<A, B, Binary/binary>>) ->
-    Byte = hex_bytes_to_val(A, B),
-    <<Byte, (parse(Binary))/binary>>.
+parse(Binary) ->
+    Trim = binary:part(Binary, {0, size(Binary) - 1}),
+    Int = binary_to_integer(Trim, 16),
+    NBits = size(Trim) * 4,
+    <<Int:NBits/unsigned-big>>.
 
 -spec solve(Input :: input_type()) -> result_type().
 solve(Binary) ->
@@ -89,40 +87,22 @@ packet_value({op, _Version, TypeID, Packets}) when TypeID =:= 2 ->
     lists:min(packet_values(Packets));
 packet_value({op, _Version, TypeID, Packets}) when TypeID =:= 3 ->
     lists:max(packet_values(Packets));
-packet_value({op, _Version, TypeID, [P1, P2]}) when TypeID =:= 5 ->
-    case packet_value(P1) > packet_value(P2) of
-        true ->
+packet_value({op, _Version, TypeID, [P1, P2]}) when TypeID >= 5 ->
+    V1 = packet_value(P1),
+    V2 = packet_value(P2),
+    case TypeID of
+        5 when V1 > V2 ->
             1;
-        false ->
-            0
-    end;
-packet_value({op, _Version, TypeID, [P1, P2]}) when TypeID =:= 6 ->
-    case packet_value(P1) < packet_value(P2) of
-        true ->
+        6 when V1 < V2 ->
             1;
-        false ->
-            0
-    end;
-packet_value({op, _Version, TypeID, [P1, P2]}) when TypeID =:= 7 ->
-    case packet_value(P1) == packet_value(P2) of
-        true ->
+        7 when V1 == V2 ->
             1;
-        false ->
+        _ ->
             0
     end.
 
 packet_values(Packets) ->
     lists:map(fun packet_value/1, Packets).
-
-hex_bytes_to_val(A, B) ->
-    Abyte = hex_to_dec(A),
-    Bbyte = hex_to_dec(B),
-    Abyte bsl 4 bor Bbyte.
-
-hex_to_dec(X) when X >= $0 andalso X =< $9 ->
-    X - $0;
-hex_to_dec(X) when X >= $A andalso X =< $F ->
-    10 + (X - $A).
 
 bitstring_to_decimal(<<>>, Acc) ->
     Acc;
