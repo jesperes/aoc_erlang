@@ -16,4 +16,4 @@ include_dirs:
 lenses:
   disabled:
     - function-references
-    # - suggest-spec
+    - suggest-spec
