@@ -3,7 +3,7 @@
 -export([test/1, test/2]).
 
 -define(SCHEDULER_REDUCTIONS_LIMIT, 2000).
--define(MIN_INNER_LOOPS, 1).
+-define(MIN_INNER_LOOPS, 20).
 -define(STOP_OUTER_MSG, stop_outer_loop).
 
 test(Fs) ->

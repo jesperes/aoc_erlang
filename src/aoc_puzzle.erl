@@ -115,7 +115,7 @@ run(Module) ->
     run_puzzle(Info, Input).
 
 perftest(Module) ->
-    perftest(Module, timer:seconds(20)).
+    perftest(Module, timer:seconds(5)).
 
 perftest(Module, Time) ->
     perftest:test([{aoc_puzzle, run, [Module]}], Time).
@@ -135,4 +135,4 @@ aoc2021_perftest() ->
                     aoc2021_day11,
                     aoc2021_day12,
                     aoc2021_day13]),
-    perftest:test(Fs, timer:seconds(20)).
+    perftest:test(Fs, timer:seconds(5)).
