@@ -67,6 +67,8 @@ lower_bound_dist_to_goal({X, Y}, Tiles) ->
 
 %% A* implementation
 find(Gs, Fs, Grid, Tiles) ->
+    Width = ?WIDTH * Tiles,
+    Height = ?HEIGHT * Tiles,
     {F, Fs0} = gb_sets:take_smallest(Fs),
     {Dist, Curr} = ?UNPACK_F(F),
     case Curr of
@@ -77,9 +79,9 @@ find(Gs, Fs, Grid, Tiles) ->
             {NewGs, NewFs} =
                 lists:foldl(fun ({Xa, Ya} = Coord, {GsIn, FsIn} = Acc)
                                     when Xa >= 0
-                                         andalso Xa < ?WIDTH * Tiles
+                                         andalso Xa < Width
                                          andalso Ya >= 0
-                                         andalso Ya < ?HEIGHT * Tiles ->
+                                         andalso Ya < Height ->
                                     PackedCoord = ?PACK_COORD(Xa, Ya),
                                     MaybeNewScore =
                                         maps:get(PackedXY, GsIn) + edge_weight(Coord, Grid),
