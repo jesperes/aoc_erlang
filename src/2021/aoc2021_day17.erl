@@ -31,23 +31,11 @@ solve(Target) ->
     % Part 2: find all velocities which hit the target area.
     % The parameters used were a bit trial-and-error.
     Hits = try_fire_probe(Target, 5, 80, -250, 250),
-    {P1, _} = lists:max(Hits),
-    P2 = length(Hits),
-    {P1, P2}.
+    {lists:max(Hits), length(Hits)}.
 
 try_fire_probe(Target, MinX, MaxX, MinY, MaxY) ->
     Vs = [{X, Y} || X <- lists:seq(MinX, MaxX), Y <- lists:seq(MinY, MaxY)],
-    lists:filtermap(fun(V) ->
-                       case trajectory(V, Target) of
-                           {true, T} ->
-                               M = lists:max(
-                                       lists:map(fun({_, Y}) -> Y end, T)),
-                               {true, {M, V}};
-                           _T -> false
-                       end
-                    end,
-                    Vs).
-
+    lists:filtermap(fun(V) -> trajectory(V, Target) end, Vs).
 
 inside_target_area({X, Y}, {{XMin, XMax}, {YMin, YMax}}) ->
     X >= XMin andalso X =< XMax andalso Y >= YMin andalso Y =< YMax.
@@ -60,21 +48,21 @@ past_target_area(_, _, _) ->
     false.
 
 trajectory(Velocity, Target) ->
-    trajectory(Velocity, {0, 0}, Target, [{0, 0}]).
+    trajectory(Velocity, {0, 0}, Target, -10000).
 
-trajectory({Dx, Dy} = V, {X, Y} = Pos, Target, Acc) ->
-    % io:format("~nV = ~p, Pos = ~p~nAcc = ~p~n", [V, Pos, lists:reverse(Acc)]),
+trajectory({Dx, Dy} = V, {X, Y} = Pos, Target, MaxY) ->
     case {inside_target_area(Pos, Target), past_target_area(Pos, V, Target)} of
         {true, _} ->
-            {true, lists:reverse(Acc)};
+            {true, MaxY};
         {_, true} ->
-            {false, lists:reverse(Acc)};
+            false;
         _ ->
             X0 = X + Dx,
             Y0 = Y + Dy,
             Dx0 = drag_x(Dx),
             Dy0 = Dy - 1,
-            trajectory({Dx0, Dy0}, {X0, Y0}, Target, [{X0, Y0} | Acc])
+            MaxY0 = max(Y0, MaxY),
+            trajectory({Dx0, Dy0}, {X0, Y0}, Target, MaxY0)
     end.
 
 drag_x(X) when X > 0 ->
