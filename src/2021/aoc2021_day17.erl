@@ -18,8 +18,9 @@ info() ->
                 has_input_file = false,
                 use_one_solver_fun = true}.
 
--type input_type() :: any().
--type result_type() :: integer().
+-type input_type() ::
+    {{MinX :: integer(), MaxX :: integer()}, {MinY :: integer(), MaxY :: integer()}}.
+-type result_type() :: {integer(), integer()}.
 
 -spec parse(Binary :: binary()) -> input_type().
 parse(_Binary) ->
@@ -71,36 +72,3 @@ drag_x(X) when X < 0 ->
     X + 1;
 drag_x(X) ->
     X.
-
-plot_trajectory(Trajectory, {{XMin, XMax}, {YMin, YMax}}) ->
-    TargetArea =
-        lists:map(fun(Coord) -> {Coord, $T} end,
-                  [{X, Y} || X <- lists:seq(XMin, XMax), Y <- lists:seq(YMin, YMax)]),
-    TrajectoryPoints =
-        lists:map(fun ({0, 0} = Coord) ->
-                          {Coord, $S};
-                      (Coord) ->
-                          {Coord, $#}
-                  end,
-                  Trajectory),
-    % The "grid" module assumes Y grows downwards, but in this case the T-axis
-    % is flipped.
-    Points =
-        maps:from_list(
-            lists:map(fun({{X, Y}, C}) -> {{X, -Y}, C} end, TargetArea ++ TrajectoryPoints)),
-    Str = grid:to_str(Points),
-    io:format("~n~s~n", [Str]).
-
-%% Tests
-
--ifdef(TEST).
-
-trajectory_test() ->
-    Target = {{20, 30}, {-10, -5}},
-    Trajectory1 = trajectory({7, 2}, Target),
-    plot_trajectory(Trajectory1, Target),
-    Trajectory2 = trajectory({17, -4}, Target),
-    plot_trajectory(Trajectory2, Target),
-    throw(stop).
-
--endif.
