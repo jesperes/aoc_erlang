@@ -29,13 +29,11 @@ parse(_Binary) ->
 -spec solve(Input :: input_type()) -> result_type().
 solve(Target) ->
     % Part 1: find the velocity with the given max Y pos.
-    %
     % Part 2: find how many distinct velocities hit the target area.
-    %
-    % The parameters used here are an estimate of the actual range of initial
-    % velocities which will hit the target area.
-    Hits = try_fire_probe(Target, 5, 80, -250, 250),
 
+    % The range here is tweaked so that it is the smallest number of velocities
+    % we need to check without getting the wrong result.
+    Hits = try_fire_probe(Target, 8, 73, -248, 248),
     {lists:max(Hits), length(Hits)}.
 
 try_fire_probe(Target, MinX, MaxX, MinY, MaxY) ->
