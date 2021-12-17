@@ -23,10 +23,7 @@ info() ->
 
 -spec parse(Binary :: binary()) -> input_type().
 parse(Binary) ->
-    Trim = binary:part(Binary, {0, size(Binary) - 1}),
-    Int = binary_to_integer(Trim, 16),
-    NBits = size(Trim) * 4,
-    <<Int:NBits/unsigned-big>>.
+    binary:decode_hex(binary:part(Binary, {0, size(Binary) - 1})).
 
 -spec solve(Input :: input_type()) -> result_type().
 solve(Binary) ->
