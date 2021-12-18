@@ -127,6 +127,14 @@ split([A, B]) ->
             [A0, B]
     end.
 
+% The explode step is slightly inefficient. We first flatten the list and
+% annotate each element with its depth. This allows us to do the "explode" pass
+% in a not-terribly complex way. Then we "unflatten" the list back into its
+% hierarchical form.
+explode(L) ->
+    [_ | Exp] = maybe_explode([{0, 0}] ++ annotate_depth(L, [], 0) ++ [{0, 0}]),
+    unflatten(lists:sublist(Exp, length(Exp) - 1)).
+
 % Modified version of "flatten" which annotates each element with its depth.
 annotate_depth([H | T], Tail, Depth) when is_list(H) ->
     annotate_depth(H, annotate_depth(T, Tail, Depth), Depth + 1);
@@ -134,10 +142,6 @@ annotate_depth([H | T], Tail, Depth) ->
     [{H, Depth} | annotate_depth(T, Tail, Depth)];
 annotate_depth([], Tail, _) ->
     Tail.
-
-explode(L) ->
-    [_ | Exp] = maybe_explode([{0, 0}] ++ annotate_depth(L, [], 0) ++ [{0, 0}]),
-    unflatten(lists:sublist(Exp, length(Exp) - 1)).
 
 maybe_explode([{Left, Ld}, {A, Ad}, {B, Bd}, {Right, Rd} | Rest])
     when Ad == 4 andalso Bd == 4 ->
@@ -147,6 +151,9 @@ maybe_explode([L | Rest]) ->
 maybe_explode([]) ->
     [].
 
+% This "unflatten" thing is also inefficient; we find the first position where
+% we have a pair on the same depth, put them in a separate pair, then restart
+% the process.
 unflatten(Xs) ->
     case do_unflatten(Xs) of
         Xs0 when Xs0 =/= Xs ->
