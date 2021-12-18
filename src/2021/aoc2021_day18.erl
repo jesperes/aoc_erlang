@@ -113,8 +113,9 @@ reduce(Xs) ->
     end.
 
 split(X) when is_integer(X) andalso X >= 10 ->
-    A = trunc(math:floor(X / 2)),
-    B = trunc(math:ceil(X / 2)),
+    Half = X / 2,
+    A = trunc(math:floor(Half)),
+    B = trunc(math:ceil(Half)),
     [A, B];
 split(X) when is_integer(X) ->
     X;
@@ -137,29 +138,23 @@ annotate_depth([], Tail, _) ->
 
 explode(L) ->
     L0 = annotate_depth(L, [], 0),
-    Exp = maybe_explode([{none, 0}] ++ L0 ++ [{none, 0}]),
+    Exp = maybe_explode([{0, 0}] ++ L0 ++ [{0, 0}]),
     Sub = lists:sublist(Exp, 2, length(Exp) - 2),
     unflatten(Sub).
 
 maybe_explode([{Left, Ld}, {A, Ad}, {B, Bd}, {Right, Rd} | Rest])
     when Ad == 4 andalso Bd == 4 ->
-    [{add(Left, A), Ld}, {0, Ad - 1}, {add(Right, B), Rd} | Rest];
+    [{Left + A, Ld}, {0, Ad - 1}, {Right + B, Rd} | Rest];
 maybe_explode([L | Rest]) ->
     [L | maybe_explode(Rest)];
 maybe_explode([]) ->
     [].
 
-add(none, _) ->
-    none;
-add(X, Y) ->
-    X + Y.
-
 unflatten(Xs) ->
     case do_unflatten(Xs) of
         Xs0 when Xs0 =/= Xs ->
             unflatten(Xs0);
-        Xs0 ->
-            [{L, _}] = Xs0,
+        [{L, _}] ->
             L
     end.
 
@@ -168,9 +163,7 @@ do_unflatten(Xs) ->
         [] ->
             [];
         [{A, D}, {B, D} | Rest] ->
-            _X = [{A, D}, {B, D}],
-            Y = {[A, B], D - 1},
-            [Y | Rest];
+            [{[A, B], D - 1} | Rest];
         [N | Rest] ->
             [N | do_unflatten(Rest)]
     end.
