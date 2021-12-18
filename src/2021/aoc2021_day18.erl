@@ -143,9 +143,11 @@ annotate_depth([H | T], Tail, Depth) ->
 annotate_depth([], Tail, _) ->
     Tail.
 
-maybe_explode([{Left, Ld}, {A, Ad}, {B, Bd}, {Right, Rd} | Rest])
-    when Ad == 4 andalso Bd == 4 ->
-    [{Left + A, Ld}, {0, Ad - 1}, {Right + B, Rd} | Rest];
+maybe_explode([{Left, Ld}, {A, 4}, {B, 4}, {Right, Rd} | Rest]) ->
+    [{Left + A, Ld},
+     {0, 3}, %% if A and B are at level 4, the 0 we replace it at is at level 3
+     {Right + B, Rd}
+     | Rest];
 maybe_explode([L | Rest]) ->
     [L | maybe_explode(Rest)];
 maybe_explode([]) ->
