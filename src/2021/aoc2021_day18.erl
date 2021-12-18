@@ -122,8 +122,7 @@ split(X) when is_integer(X) ->
 split([A, B]) ->
     case split(A) of
         A0 when A =:= A0 ->
-            B0 = split(B),
-            [A0, B0];
+            [A0, split(B)];
         A0 ->
             [A0, B]
     end.
@@ -137,10 +136,8 @@ annotate_depth([], Tail, _) ->
     Tail.
 
 explode(L) ->
-    L0 = annotate_depth(L, [], 0),
-    Exp = maybe_explode([{0, 0}] ++ L0 ++ [{0, 0}]),
-    Sub = lists:sublist(Exp, 2, length(Exp) - 2),
-    unflatten(Sub).
+    [_ | Exp] = maybe_explode([{0, 0}] ++ annotate_depth(L, [], 0) ++ [{0, 0}]),
+    unflatten(lists:sublist(Exp, length(Exp) - 1)).
 
 maybe_explode([{Left, Ld}, {A, Ad}, {B, Bd}, {Right, Rd} | Rest])
     when Ad == 4 andalso Bd == 4 ->
