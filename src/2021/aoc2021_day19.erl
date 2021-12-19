@@ -20,79 +20,113 @@ info() ->
                 has_input_file = true,
                 use_one_solver_fun = true}.
 
--type input_type() :: any().
--type result_type() :: integer().
+-type coord() :: {integer(), integer(), integer()}.
+-type distance_vector() :: {integer(), integer(), integer()}.
+-type scanner() :: {Id :: integer(), Coords :: [coord()]}.
+-type input_type() :: [scanner()].
+-type result_type() :: {integer(), integer()}.
+
+scanner_id({Id, _}) ->
+    Id.
+
+scanner_coords({_, Coords}) ->
+    Coords.
+
+scanner(Id, Coords) ->
+    {Id, Coords}.
 
 -spec parse(Binary :: binary()) -> input_type().
 parse(Binary) ->
     F = fun binary_to_integer/1,
     Split = fun(B, C) -> binary:split(B, C, [trim_all, global]) end,
     lists:map(fun(B) ->
-                 [_ | Coords] = Split(B, <<"\n">>),
-                 lists:map(fun(CoordBin) ->
-                              [X, Y, Z] = Split(CoordBin, <<",">>),
-                              {F(X), F(Y), F(Z)}
-                           end,
-                           Coords)
+                 [Header | Coords] = Split(B, <<"\n">>),
+                 [_, _, ScannerNum, _] = Split(Header, <<" ">>),
+                 {F(ScannerNum),
+                  lists:map(fun(CoordBin) ->
+                               [X, Y, Z] = Split(CoordBin, <<",">>),
+                               {F(X), F(Y), F(Z)}
+                            end,
+                            Coords)}
               end,
               Split(Binary, <<"\n\n">>)).
 
 -spec solve(Input :: input_type()) -> result_type().
 solve(Scanners) ->
-    {Coords, ScannerPositions} = merge(Scanners, []),
+    {MergedScanner, ScannerPositions} = merge(Scanners, [], rotation_funs()),
     MaxManhattanDist =
         lists:max([manhattan_dist(DV1, DV2) || DV1 <- ScannerPositions, DV2 <- ScannerPositions]),
-    {length(Coords), MaxManhattanDist}.
+    {length(scanner_coords(MergedScanner)), MaxManhattanDist}.
 
-merge([A], ScannerPositions) ->
+-spec merge([scanner()], list(), [fun()]) -> {[scanner()], list()}.
+merge([A], ScannerPositions, _RotationFuns) ->
     {A, ScannerPositions};
-merge([A, B | Rest], ScannerPositions) ->
-    case find_overlap(A, B) of
-        none ->
-            merge([A] ++ Rest ++ [B], ScannerPositions);
+merge([A, B | Rest], ScannerPositions, RotationFuns) ->
+    case find_overlap(A, B, RotationFuns) of
+        false ->
+            merge([A] ++ Rest ++ [B], ScannerPositions, RotationFuns);
         {{Dx, Dy, Dz} = DV, RotatedB} ->
-            Remapped = lists:map(fun({X1, Y1, Z1}) -> {X1 + Dx, Y1 + Dy, Z1 + Dz} end, RotatedB),
-            Merged = lists:usort(Remapped ++ A),
-            merge([Merged | Rest], [DV | ScannerPositions])
+            RemappedCoords =
+                lists:map(fun({X1, Y1, Z1}) -> {X1 + Dx, Y1 + Dy, Z1 + Dz} end,
+                          scanner_coords(RotatedB)),
+            MergedCoords = lists:usort(RemappedCoords ++ scanner_coords(A)),
+            merge([scanner(scanner_id(A), MergedCoords) | Rest],
+                  [DV | ScannerPositions],
+                  RotationFuns)
     end.
 
+-spec distance_vector(coord(), coord()) -> distance_vector().
 distance_vector({X0, Y0, Z0}, {X1, Y1, Z1}) ->
     {X0 - X1, Y0 - Y1, Z0 - Z1}.
 
-distance_vector_freq_map(A, B) ->
-    lists:foldl(fun(DV, FreqMap) -> maps:update_with(DV, fun(N) -> N + 1 end, 1, FreqMap) end,
-                #{},
-                [distance_vector(C1, C2) || C1 <- A, C2 <- B]).
+has_12_identical_elems([]) ->
+    false;
+has_12_identical_elems([X, X, X, X, X, X, X, X, X, X, X, X | _]) ->
+    {true, X};
+has_12_identical_elems([_ | Rest]) ->
+    has_12_identical_elems(Rest).
 
-scanner_rotations(ScannerCoords) ->
-    lists:map(fun(Fun) -> lists:map(fun(Coord) -> Fun(Coord) end, ScannerCoords) end,
-              rotation_funs()).
+% Check if the set of scanner coordinates A and B overlap by at least 12 points.
+% If so, return {DistanceVector, RotatedCoordinates}. Uses the process
+% dictionary to cache rotations.
+-spec find_overlap(A :: scanner(), B :: scanner(), RotationFuns :: [fun()]) ->
+                      {DV :: distance_vector(), RotatedB :: scanner()} | false.
+find_overlap(_, _, []) ->
+    false;
+find_overlap(A, B, [RotationFun | Fs]) ->
+    Key = {scanner_id(B), RotationFun},
+    case get(Key) of
+        undefined ->
+            case do_find_overlap(A, B, RotationFun) of
+                false ->
+                    find_overlap(A, B, Fs);
+                Result ->
+                    put(Key, Result),
+                    Result
+            end;
+        Result ->
+            Result
+    end.
 
-overlapping_beacons(A, B) ->
-    maps:filter(fun (_, Freq) when Freq >= 12 ->
-                        true;
-                    (_, _) ->
-                        false
-                end,
-                distance_vector_freq_map(A, B)).
+-spec do_find_overlap(A :: scanner(), B :: scanner(), RotationFun :: fun()) ->
+                         false | {DV :: distance_vector(), RotatedB :: scanner()}.
+do_find_overlap(A, B, RotationFun) ->
+    RotatedBCoords = lists:map(fun(Coord) -> RotationFun(Coord) end, scanner_coords(B)),
+    DVs = [distance_vector(C1, C2) || C1 <- scanner_coords(A), C2 <- RotatedBCoords],
+    case has_12_identical_elems(lists:sort(DVs)) of
+        {true, DV} ->
+            {DV, scanner(scanner_id(B), RotatedBCoords)};
+        false ->
+            false
+    end.
 
-%% If A and B overlap with at least 12 beacons, return the rotated coordinates
-%and the distance vector
-find_overlap(A, B) ->
-    case lists:filtermap(fun(RotB) ->
-                            Overlapping = overlapping_beacons(A, RotB),
-                            case maps:size(Overlapping) of
-                                0 -> false;
-                                N when N >= 1 -> {true, {Overlapping, RotB}}
-                            end
-                         end,
-                         scanner_rotations(B))
-    of
-        [] ->
-            none;
-        [{Overlap, Rotation} | _] ->
-            [{Vector, _}] = maps:to_list(Overlap),
-            {Vector, Rotation}
+count_rotation(Coords, Fun) ->
+    Key = {overlap_count, Coords, Fun},
+    case get(Key) of
+        undefined ->
+            put(Key, 1);
+        Value ->
+            put(Key, Value + 1)
     end.
 
 manhattan_dist({X0, Y0, Z0}, {X1, Y1, Z1}) ->
@@ -168,12 +202,6 @@ ex1_test() ->
                 "609\n833,512,582\n807,604,487\n839,-516,451\n891,-625,532\n-652,-548"
                 ",-490\n30,-46,-14">>),
 
-    {Coords, ScannerPositions} = merge(maps:values(Scanners), []),
-    ?assertEqual(79, length(Coords)),
-
-    MaxManhattanDist =
-        lists:max([manhattan_dist(DV1, DV2) || DV1 <- ScannerPositions, DV2 <- ScannerPositions]),
-
-    ?debugFmt("~p", [MaxManhattanDist]).
+    ?assertEqual({79, 3621}, solve(Scanners)).
 
 -endif.
