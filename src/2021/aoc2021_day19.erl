@@ -4,8 +4,6 @@
 
 -export([parse/1, solve/1, info/0]).
 
--compile([nowarn_unused_function]).
-
 -include("aoc_puzzle.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
@@ -58,12 +56,14 @@ solve(Scanners) ->
         lists:max([manhattan_dist(DV1, DV2) || DV1 <- ScannerPositions, DV2 <- ScannerPositions]),
     {length(scanner_coords(MergedScanner)), MaxManhattanDist}.
 
--spec merge([scanner()], list(), [fun()]) -> {[scanner()], list()}.
+-spec merge([scanner()], list(), [fun()]) -> {scanner(), list()}.
 merge([A], ScannerPositions, _RotationFuns) ->
     {A, ScannerPositions};
 merge([A, B | Rest], ScannerPositions, RotationFuns) ->
     case find_overlap(A, B, RotationFuns) of
         false ->
+            % If the first two elements do not overlap, put the second one last,
+            % and retry with the next.
             merge([A] ++ Rest ++ [B], ScannerPositions, RotationFuns);
         {{Dx, Dy, Dz} = DV, RotatedB} ->
             RemappedCoords =
@@ -118,15 +118,6 @@ do_find_overlap(A, B, RotationFun) ->
             {DV, scanner(scanner_id(B), RotatedBCoords)};
         false ->
             false
-    end.
-
-count_rotation(Coords, Fun) ->
-    Key = {overlap_count, Coords, Fun},
-    case get(Key) of
-        undefined ->
-            put(Key, 1);
-        Value ->
-            put(Key, Value + 1)
     end.
 
 manhattan_dist({X0, Y0, Z0}, {X1, Y1, Z1}) ->
