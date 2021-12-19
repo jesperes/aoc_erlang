@@ -5,6 +5,7 @@
 -export([parse/1, solve1/1, solve2/1, info/0]).
 
 -include("aoc_puzzle.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 -spec info() -> aoc_puzzle().
 info() ->
@@ -32,7 +33,6 @@ solve2(_Input) ->
     0.
 
 %% Tests
--include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
 
 %% ...
