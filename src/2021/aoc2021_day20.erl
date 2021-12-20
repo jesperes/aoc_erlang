@@ -34,7 +34,6 @@ parse(Binary) ->
                     end,
                     #{},
                     binary:matches(Rest, <<"#">>)),
-    %% ?debugFmt("~n~s", [grid:to_str(Image)]),
     {Algo, Image}.
 
 -spec solve(Input :: input_type()) -> result_type().
@@ -56,17 +55,14 @@ enhance({_, Map} = Input, N) ->
     MaxY = lists:max(Ys) + N,
     Limits = {MinX, MaxX, MinY, MaxY},
 
-    Coords =
-        [{X, Y}
-         || X <- lists:seq(lists:min(Xs) - N, lists:max(Xs) + N),
-            Y <- lists:seq(lists:min(Ys) - N, lists:max(Ys) + N)],
+    Coords = [{X, Y} || X <- lists:seq(MinX, MaxX), Y <- lists:seq(MinY, MaxY)],
+
     enhance(Input, N, Coords, Limits).
 
 enhance(Input, 0, _Coords, _Limits) ->
     Input;
 enhance({_, _Map0} = Input, N, Coords, Limits) ->
     {_, _Map} = Input0 = do_enhance(Input, N, Coords, Limits),
-    % ?debugFmt("~nAfter step~n~s", [grid:to_str(Map)]),
     enhance(Input0, N - 1, Coords, Limits).
 
 do_enhance({Algo, ImageMap}, N, Coords, Limits) ->
@@ -80,7 +76,11 @@ do_enhance({Algo, ImageMap}, N, Coords, Limits) ->
                  #{},
                  Coords)}.
 
-enhance_pixel({X, Y}, Algo, ImageMap, N, {MinX, MaxX, MinY, MaxY}) ->
+enhance_pixel({X, Y},
+              <<Algo0, _/binary>> = Algo,
+              ImageMap,
+              N,
+              {MinX, MaxX, MinY, MaxY}) ->
     Nbrs =
         [{X - 1, Y - 1},
          {X, Y - 1},
@@ -91,7 +91,7 @@ enhance_pixel({X, Y}, Algo, ImageMap, N, {MinX, MaxX, MinY, MaxY}) ->
          {X - 1, Y + 1},
          {X, Y + 1},
          {X + 1, Y + 1}],
-    IsAlgo0Set = binary:at(Algo, 0) =:= $#,
+    IsAlgo0Set = Algo0 =:= $#,
     Str = lists:map(fun ({X0, Y0} = Coord)
                             when X0 >= MinX
                                  andalso X0 =< MaxX
@@ -104,10 +104,7 @@ enhance_pixel({X, Y}, Algo, ImageMap, N, {MinX, MaxX, MinY, MaxY}) ->
                             $0
                     end,
                     Nbrs),
-    Num = list_to_integer(Str, 2),
-    AlgoNum = binary:at(Algo, Num),
-    % ?debugFmt("~3w -> ~s (~s)", [Num, Str, [AlgoNum]]),
-    AlgoNum.
+    binary:at(Algo, list_to_integer(Str, 2)).
 
 %% Tests
 -ifdef(TEST).
