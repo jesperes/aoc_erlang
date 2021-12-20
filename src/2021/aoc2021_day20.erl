@@ -19,7 +19,7 @@ info() ->
                 use_one_solver_fun = true}.
 
 -type input_type() :: any().
--type result_type() :: integer().
+-type result_type() :: {integer(), integer()}.
 
 -spec parse(Binary :: binary()) -> input_type().
 parse(Binary) ->
