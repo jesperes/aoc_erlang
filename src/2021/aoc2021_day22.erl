@@ -22,98 +22,157 @@ info() ->
 -type input_type() :: any().
 -type result_type() :: integer().
 
+-define(IS_INIT(XMin, XMax, YMin, YMax, ZMin, ZMax),
+        XMin >= -50
+        andalso XMax =< 50
+        andalso YMin >= -50
+        andalso YMax =< 50
+        andalso ZMin >= -50
+        andalso ZMax =< 50).
+
 -spec parse(Binary :: binary()) -> input_type().
 parse(Binary) ->
     F = fun list_to_integer/1,
     lists:map(fun(B) ->
                  [OnOff, XMin, XMax, YMin, YMax, ZMin, ZMax] =
                      string:tokens(binary_to_list(B), " =..,xyz"),
-                 {list_to_atom(OnOff), F(XMin), F(XMax), F(YMin), F(YMax), F(ZMin), F(ZMax)}
+                 {list_to_atom(OnOff), {F(XMin), F(XMax)}, {F(YMin), F(YMax)}, {F(ZMin), F(ZMax)}}
               end,
               binary:split(Binary, <<"\n">>, [trim_all, global])).
 
 -spec solve1(Input :: input_type()) -> result_type().
 solve1(Input) ->
-    InitCubes =
-        lists:filter(fun({_, XMin, XMax, YMin, YMax, ZMin, ZMax}) ->
-                        XMin >= -50
-                        andalso XMax =< 50
-                        andalso YMin >= -50
-                        andalso YMax =< 50
-                        andalso ZMin >= -50
-                        andalso ZMax =< 50
-                     end,
-                     Input),
-    maps:size(switch_cubes(InitCubes, #{})).
+    count_cubes(do_solve(lists:filter(fun({_, {XMin, XMax}, {YMin, YMax}, {ZMin, ZMax}}) ->
+                                         ?IS_INIT(XMin, XMax, YMin, YMax, ZMin, ZMax)
+                                      end,
+                                      Input))).
 
 -spec solve2(Input :: input_type()) -> result_type().
 solve2(_Input) ->
     0.
-    % Ranges = sweep_x(Input, []),
-    % Squares = sweep_y(Ranges, Input, []),
-    % _Cuboids = sweep_z(Squares, Input, []).
 
+    % do_solve(Input).
 
-% sweep_y([{XMin, XMax} | Rest], Instr, SquaresOut) ->
-%     Squares = lists:foldl(fun({_, XMin0, XMax0, YMin, YMax, _, _}, Acc) ->
-%                    case overlapping_range({XMin, XMax}, {XMin0, XMax0}) of
-%                        false -> Acc;
-%                        {OverlapXMin, OverlapXMax} -> [{OverlapXMin, OverlapXMax, YMin, YMax} | Acc]
-%                    end
-%                 end,
-%                 [],
-%                 Instr).
+count_cubes([]) ->
+    0;
+count_cubes([{off, _, _, _} | Rest]) ->
+    count_cubes(Rest);
+count_cubes([{on, {XMin, XMax}, {YMin, YMax}, {ZMin, ZMax}} | Rest]) ->
+    (XMax - XMin) * (YMax - YMin) * (ZMax - ZMin) + count_cubes(Rest).
 
-switch_cubes([], Map) -> Map;
-switch_cubes([{OnOff, XMin, XMax, YMin, YMax, ZMin, ZMax} | Rest], Map) ->
-    Coords =
-        [{X, Y, Z}
-         || X <- lists:seq(XMin, XMax), Y <- lists:seq(YMin, YMax), Z <- lists:seq(ZMin, ZMax)],
-    switch_cubes(Rest,
-                 lists:foldl(fun(Coord, Acc) ->
-                                case OnOff of
-                                    on -> maps:put(Coord, true, Acc);
-                                    off -> maps:remove(Coord, Acc)
-                                end
-                             end,
-                             Map,
-                             Coords)).
+do_solve(Instrs) ->
+    do_solve(tl(Instrs), [hd(Instrs)]).
 
-%         {_, XMin1, XMax1, YMin1, YMax1, ZMin1, ZMax1}) ->
-%     OverlapX = overlapping_range({XMin0, XMax0}, {XMin1, XMax1}),
-%     OverlapY = overlapping_range({YMin0, YMax0}, {YMin1, YMax1}),
-%     OverlapZ = overlapping_range({ZMin0, ZMax0}, {ZMin1, ZMax1}),
-%     if not OverlapX orelse not OverlapY orelse not OverlapZ ->
-%            % Boxes only overlap if all the X, Y, and Z coordinates overlap.
-%            false;
-%        true ->
-%            {OverlapXMin, OverlapXMax} = OverlapX,
-%            {OverlapYMin, OverlapYMax} = OverlapY,
-%            {OverlapZMin, OverlapZMax} = OverlapZ,
+do_solve([], NonOverlapping) ->
+    NonOverlapping;
+do_solve([A | Rest], NonOverlapping) ->
+    ?assert(not has_overlapping_cuboids(NonOverlapping)),
 
-%            _OverlapCuboid =
-%                {OverlapXMin, OverlapXMax, OverlapYMin, OverlapYMax, OverlapZMin, OverlapZMax},
+    io:format(standard_error,
+              "~nChecking ~p (~p remaining) (~p non-overlaps)~n",
+              [A, length(Rest), length(NonOverlapping)]),
+    %% Find all the cuboids in the non-overlapping list which overlap with A
+    {OverlapWithA, NonOverlapWithA} =
+        lists:partition(fun(B) -> are_cuboids_overlapping(A, B) end, NonOverlapping),
 
-%             NonOverlapXAbove = {OverlapXMax, max(XMax0, XMax1)},
-%             NonOverlapYAbove = {OverlapYMax, max(YMax0, YMax1)},
-%             NonOverlapZAbove = {OverlapZMax, max(ZMax0, ZMax1)},
+    io:format(standard_error, "-- overlapping: ~p~n", [OverlapWithA]),
+    io:format(standard_error, "-- non-overlapping: ~p~n", [NonOverlapWithA]),
 
-%             NonOverlapXBelow = {OverlapXMin, min(XMin0, XMin1)},
-%             NonOverlapYBelow = {OverlapYMin, min(YMin0, YMin1)},
-%             NonOverlapZBelow = {OverlapZMin, min(ZMin0, ZMin1)}
+    %% Split the overlapping ones
+    NewNonOverlaps =
+        NonOverlapWithA
+        ++ lists:foldl(fun(B, Acc) -> split_cuboids(A, B) ++ Acc end, [], OverlapWithA),
 
-%     end.
+    io:format(standard_error, "Non-overlaps after splitting~n~p~n", [NewNonOverlaps]),
 
-overlapping_range({A, B}, {C, D}) ->
+    do_solve(Rest, NewNonOverlaps).
+
+% all ranges are inclusive
+
+split_cuboids({OnOffA,
+               {MinXA, MaxXA} = XRangeA,
+               {MinYA, MaxYA} = YRangeA,
+               {MinZA, MaxZA} = ZRangeA} =
+                  A,
+              {OnOffB,
+               {MinXB, MaxXB} = XRangeB,
+               {MinYB, MaxYB} = YRangeB,
+               {MinZB, MaxZB} = ZRangeB} =
+                  B) ->
+    {OverlapXMin, OverlapXMax} = OverlapXRange = overlap(XRangeA, XRangeB),
+    {OverlapYMin, OverlapYMax} = OverlapYRange = overlap(YRangeA, YRangeB),
+    {OverlapZMin, OverlapZMax} = OverlapZRange = overlap(ZRangeA, ZRangeB),
+
+    OverlapCuboid = {OnOffB, OverlapXRange, OverlapYRange, OverlapZRange},
+
+    case is_valid_cuboid(OverlapCuboid) of
+        false ->
+            % If there is no overlap, just return the unmodified cuboids
+            [A, B];
+        true ->
+            CX = if MinXA < MinXB andalso MaxXA < MaxXB ->
+                        %% A: ..[.||]....
+                        %% B: ....[||.]..
+                        [{OnOffA, {MinXA, OverlapXMin - 1}, YRangeA, ZRangeA},
+                         {OnOffB, {OverlapXMax + 1, MaxXB}, YRangeB, ZRangeB}];
+                    MinXA < MinXB andalso MaxXA > MaxXB ->
+                        %% A: ..[.||||.]..
+                        %% B: ....[..]....
+                        [{OnOffA, {MinXA, OverlapXMin - 1}, YRangeA, ZRangeA},
+                         {OnOffA, {OverlapXMax + 1, MaxXB}, YRangeB, ZRangeB}];
+                    true ->
+                        [{OnOffA, {MinXB, OverlapXMin - 1}, YRangeA, ZRangeA},
+                         {OnOffB, {OverlapXMax + 1, MaxXA}, YRangeB, ZRangeB}]
+                 end,
+
+            CY = if MinYA < OverlapYMin ->
+                        [{OnOffA, OverlapXRange, {MinYA, OverlapYMin - 1}, ZRangeA},
+                         {OnOffB, OverlapXRange, {OverlapYMax + 1, MaxYB}, ZRangeB}];
+                    true ->
+                        [{OnOffA, OverlapXRange, {MinYB, OverlapYMin - 1}, ZRangeA},
+                         {OnOffB, OverlapXRange, {OverlapYMax + 1, MaxYA}, ZRangeB}]
+                 end,
+
+            CZ = if MinZA < OverlapZMin ->
+                        [{OnOffA, OverlapXRange, OverlapYRange, {MinZA, OverlapZMin - 1}},
+                         {OnOffB, OverlapXRange, OverlapYRange, {OverlapZMax + 1, MaxZB}}];
+                    true ->
+                        [{OnOffA, OverlapXRange, OverlapYRange, {MinZB, OverlapZMin - 1}},
+                         {OnOffB, OverlapXRange, OverlapYRange, {OverlapZMax + 1, MaxZA}}]
+                 end,
+
+            lists:filter(fun is_valid_cuboid/1, [OverlapCuboid] ++ CX ++ CY ++ CZ)
+    end.
+
+overlap({A, B}, {C, D}) ->
     Min = max(A, C),
     Max = min(B, D),
-    case Min > Max of
-        true ->
-            %% Ranges do not overlap
-            false;
-        false ->
-            {Min, Max}
-    end.
+    {Min, Max}.
+
+is_valid_cuboid({_, XRange, YRange, ZRange}) ->
+    is_valid_range(XRange) andalso is_valid_range(YRange) andalso is_valid_range(ZRange).
+
+is_valid_range({A, B}) ->
+    B >= A.
+
+is_overlapping_range(RangeA, RangeB) ->
+    is_valid_range(overlap(RangeA, RangeB)).
+
+are_cuboids_overlapping({_, XRangeA, YRangeA, ZRangeA}, {_, XRangeB, YRangeB, ZRangeB}) ->
+    is_overlapping_range(XRangeA, XRangeB)
+    andalso is_overlapping_range(YRangeA, YRangeB)
+    andalso is_overlapping_range(ZRangeA, ZRangeB).
+
+has_overlapping_cuboids(List) ->
+    lists:any(fun({A, B}) ->
+                 case are_cuboids_overlapping(A, B) of
+                     true ->
+                         % io:format(standard_error, "Overlapping:~n~p~n~p~n", [A, B]),
+                         true;
+                     _ -> false
+                 end
+              end,
+              [{A, B} || A <- List, B <- List, A < B]).
 
 %% Tests
 -ifdef(TEST).
@@ -121,15 +180,20 @@ overlapping_range({A, B}, {C, D}) ->
 overlap_test() ->
     %% A: ..[..]....
     %% B: ....[..]..
-    ?assertEqual({5, 10}, overlapping_range({-10, 10}, {5, 15})),
+    ?assertEqual({5, 10}, overlap({-10, 10}, {5, 15})),
 
     %% A: ..[......]..
     %% B: ....[..]....
-    ?assertEqual({-10, 12}, overlapping_range({-10, 12}, {-12, 15})),
+    ?assertEqual({-10, 12}, overlap({-10, 12}, {-12, 15})),
 
     %% A: ..[..]........
     %% B: ........[..]..
-    ?assertEqual(false, overlapping_range({-10, 5}, {10, 15})).
+    ?assertEqual(false, is_valid_range(overlap({-10, 5}, {10, 15}))).
+
+split_cuboids_test() ->
+    Split = split_cuboids({a, {0, 10}, {0, 10}, {0, 10}}, {b, {5, 15}, {5, 15}, {5, 15}}),
+    ?assertNot(has_overlapping_cuboids(Split)),
+    io:format(standard_error, ">> ~p~n", [Split]).
 
 ex1_test() ->
     Binary =
@@ -137,5 +201,9 @@ ex1_test() ->
           "x=9..11,y=9..11,z=9..11\non x=10..10,y=10..10,z=10..10">>,
     X = solve2(parse(Binary)),
     ?debugFmt("~n~p", [X]).
+
+solve_test() ->
+    ?assertEqual(1115,
+                 solve1([{on, {0, 10}, {0, 10}, {0, 10}}, {off, {5, 15}, {5, 15}, {5, 15}}])).
 
 -endif.
