@@ -16,7 +16,7 @@ info() ->
                 year = 2021,
                 day = 23,
                 name = "Amphipod",
-                expected = {0, 0},
+                expected = {13520, 0},
                 has_input_file = true}.
 
 -type input_type() :: any().
@@ -53,73 +53,121 @@ coord_map(Binary, Chars) ->
 
 -spec parse(Binary :: binary()) -> input_type().
 parse(Binary) ->
-    Walls = coord_map(Binary, "#"),
-    Amphipods = coord_map(Binary, "ABCD"),
-    io:format(standard_error,
-              "~s~n",
-              [grid:to_str(
-                   maps:merge(Amphipods, Walls))]),
-    {Walls, Amphipods}.
+    coord_map(Binary, "ABCD").
 
 -spec solve1(Input :: input_type()) -> result_type().
-solve1({Walls, Amphipods}) ->
-    Explored = sets:new(),
-    Frontier = gb_sets:from_list([{0, Amphipods}]),
-    find_shortest_path(Explored, Frontier, Walls),
-    0.
+solve1(Amphipods) ->
+    find_shortest_path(Amphipods).
 
 -spec solve2(Input :: input_type()) -> result_type().
-solve2(_Input) ->
+solve2(_Amphipods) ->
     0.
+    % ShiftDown =
+    %     lists:foldl(fun ({{X, Y}, Type}, Acc) when Y == 3 ->
+    %                         maps:put({X, 5}, Type, Acc);
+    %                     ({Coord, Type}, Acc) ->
+    %                         maps:put(Coord, Type, Acc)
+    %                 end,
+    %                 maps:to_list(Amphipods)),
+    % NewAmphipods =
+    %     #{{3, 3} => $D,
+    %       {3, 4} => $D,
+    %       {5, 3} => $C,
+    %       {5, 4} => $B,
+    %       {7, 3} => $B,
+    %       {7, 4} => $A,
+    %       {9, 3} => $A,
+    %       {9, 4} => $C},
+    % find_shortest_path(maps:merge(ShiftDown, NewAmphipods)).
 
-% 17478
+find_shortest_path(Amphipods) ->
+    Gs = #{Amphipods => 0},
+    Fs = gb_sets:singleton({0, Amphipods}),
+    find_shortest_path(Gs, Fs).
 
-%% Dijkstra
-find_shortest_path(Explored, Frontier, Walls) ->
-    {{Cost, Amphipods} = Node, Frontier0} = gb_sets:take_smallest(Frontier),
+find_shortest_path(Gs, Fs) ->
+    {{Cost, Amphipods}, Fs0} = gb_sets:take_smallest(Fs),
     case Amphipods =:= goal() of
         true ->
             Cost;
         false ->
-            Explored0 = sets:add_element(Amphipods, Explored),
-            lists:foldl(fun(Nbr, FrontierIn) ->
-                           ?_if(sets:is_element(Nbr, Explored0),
-                                FrontierIn,
-                                gb_sets:add(Nbr, FrontierIn))
-                        end,
-                        Frontier0,
-                        neighbors(Node, Walls))
+            {NewGs, NewFs} =
+                lists:foldl(fun({NbrCost, NbrAmphipods}, {GsIn, FsIn} = Acc) ->
+                               MaybeNewScore = maps:get(Amphipods, GsIn) + NbrCost,
+                               case MaybeNewScore < maps:get(NbrAmphipods, GsIn, infinity) of
+                                   true ->
+                                       BetterScore = MaybeNewScore,
+                                       GsOut = maps:put(NbrAmphipods, BetterScore, GsIn),
+                                       NewDist =
+                                           BetterScore + lower_bound_dist_to_goal(NbrAmphipods),
+                                       FsOut = gb_sets:add({NewDist, NbrAmphipods}, FsIn),
+                                       {GsOut, FsOut};
+                                   false -> Acc
+                               end
+                            end,
+                            {Gs, Fs0},
+                            neighbors(Amphipods)),
+            find_shortest_path(NewGs, NewFs)
     end.
 
-neighbors({_Cost, Amphipods}, _Walls) ->
-    % Cost = the cost/distance from the start to this point
-    % Amphipods = the current positions of the amphipods (Coord => Char map)
-    % Walls = the position of the walls
-    %
-    % At each step:
-    % Every amphipod can make one of two moves:
-    % 1. Move from its room into a spot in the hallway
-    % 2. Move from the hallway into its final destination
-    Nbrs =
-        lists:foldl(fun(Amphipod, Acc) -> nbr_fold_fun(Amphipod, Amphipods, Acc) end,
-                    [],
-                    maps:to_list(Amphipods)),
-    throw(Nbrs).
+% Estimate distance to goal by counting steps for all amphipods
+lower_bound_dist_to_goal(Amphipods) ->
+    maps:fold(fun ({X, Y}, Type, Acc) when Y == 1 ->
+                      % for hallway-amphipods the minimum distance is the number
+                      % of steps from the hallway into their destination room
+                      cost({X, Y}, {final_dest(Type), 2}, Type) + Acc;
+                  ({X, _Y} = Coord, Type, Acc) ->
+                      % amphipods in rooms may need to move into the hallway
+                      % first
+                      FinalX = final_dest(Type),
+                      ?_if(FinalX == X,
+                           0,
+                           cost(Coord, {X, 1}, Type)
+                           + cost({X, 1}, {FinalX, 2}, Type)) % cost from hallway into room
+                      + Acc
+              end,
+              0,
+              Amphipods).
 
-nbr_fold_fun({{_, Y} = Coord, Type}, Amphipods, Acc) when Y =:= 1 ->
-    case move_to_dest(Coord, Type, Amphipods) of
-        false ->
-            Acc;
-        DestCoord ->
-            [{cost(Coord, DestCoord, Type), Coord} | Acc]
-    end;
+neighbors(Amphipods) ->
+    lists:foldl(fun(Amphipod, Acc) -> nbr_fold_fun(Amphipod, Amphipods, Acc) end,
+                [],
+                maps:to_list(Amphipods)).
+
+nbr_fold_fun({{_X, Y} = Coord, Type}, Amphipods, Acc) when Y =:= 1 ->
+    % Amphipods in the hallway can only make one move: into their final
+    % destination room.
+    move_to_dest(Coord, Type, Amphipods) ++ Acc;
 nbr_fold_fun({{_X, Y} = Coord, Type}, Amphipods, Acc) when Y >= 2 ->
-    lists:map(fun(HallwayCoord) -> {cost(Coord, HallwayCoord, Type), HallwayCoord} end,
-              free_hallway_positions(Coord, Amphipods))
+    % Amphipods in a room can move into a number of hallway positions
+    lists:foldl(fun(HallwayCoord, InnerAcc) ->
+                   CostToDest = cost(Coord, HallwayCoord, Type),
+                   [{CostToDest, maps:put(HallwayCoord, Type, maps:remove(Coord, Amphipods))}
+                    | InnerAcc]
+                end,
+                [],
+                free_hallway_positions(Coord, Amphipods))
     ++ Acc.
 
-move_to_dest(Coord, Type, Amphipods) ->
-    false.
+move_to_dest({X, _} = Coord, Type, Amphipods) ->
+    case is_dest_free(Type, Amphipods) of
+        false ->
+            [];
+        FinalY ->
+            FinalX = final_dest(Type),
+            FinalCoord = {FinalX, FinalY},
+            HallwayCoords =
+                ?_if(X < FinalX, lists:seq(X + 1, FinalX), lists:seq(X - 1, FinalX, -1)),
+            case lists:any(fun(XH) -> maps:is_key({XH, 1}, Amphipods) end, HallwayCoords) of
+                true ->
+                    % There was at least one amphipod blocking the path to this
+                    % amphipod's destination room
+                    [];
+                false ->
+                    CostToDest = cost({X, 1}, {FinalX, FinalY}, Type),
+                    [{CostToDest, maps:put(FinalCoord, Type, maps:remove(Coord, Amphipods))}]
+            end
+    end.
 
 cost({X0, Y0}, {X1, Y1}, Type) ->
     cost(Type) * (abs(X1 - X0) + abs(Y1 - Y0)).
@@ -141,16 +189,17 @@ is_free(_, _, _) ->
     [].
 
 % Is the destination room for the given amphipod type "free", i.e. empty or only
-% contains amphipods of the same type.
+% contains amphipods of the same type. Return the Y coord of the free slot , or false.
 is_dest_free(Type, Amphipods) ->
     FinalX = final_dest(Type),
-    maps:filter(fun ({X, _Y}, T) when X =:= FinalX andalso T =/= Type ->
-                        true;
-                    (_, _) ->
-                        false
-                end,
-                Amphipods)
-    =:= [].
+    case {maps:get({FinalX, 2}, Amphipods, empty), maps:get({FinalX, 3}, Amphipods, empty)} of
+        {empty, empty} ->
+            3;
+        {empty, T} when T == Type ->
+            2;
+        _ ->
+            false
+    end.
 
 final_dest($A) ->
     3;
@@ -174,6 +223,30 @@ cost($D) ->
 
 %% Tests
 
-%% ...
+is_dest_free_test() ->
+    ?assertEqual(2, is_dest_free($C, #{{7, 3} => $C})),
+    ?assertEqual(3, is_dest_free($C, #{{8, 1} => $C})),
+    ?assertEqual(false, is_dest_free($C, #{{7, 3} => $A})).
+
+free_hallway_positions_test() ->
+    ?assertEqual([], free_hallway_positions({5, 3}, #{{5, 2} => $A})),
+    ?assertEqual([], free_hallway_positions({5, 3}, #{{4, 1} => $A, {6, 1} => $B})),
+    ?assertEqual([{6, 1}],
+                 lists:sort(free_hallway_positions({5, 3}, #{{4, 1} => $A, {8, 1} => $B}))),
+    ?assertEqual([{1, 1}, {2, 1}, {4, 1}, {6, 1}],
+                 lists:sort(free_hallway_positions({5, 3}, #{{8, 1} => $B}))),
+    ?assertEqual([{10, 1}, {11, 1}],
+                 lists:sort(free_hallway_positions({9, 3}, #{{8, 1} => $B}))).
+
+cost_test() ->
+    ?assertEqual(3000, cost({3, 3}, {4, 1}, $D)),
+    ?assertEqual(7000, cost({4, 1}, {9, 3}, $D)),
+    ?assertEqual(2000, cost({3, 2}, {4, 1}, $D)).
+
+% ex1_test() ->
+%     Binary =
+%         <<"#############\n#...........#\n###B#C#B#D###\n..#A#D#C#A#..\n..######"
+%           "###..">>,
+%     ?assertEqual(12521, solve1(parse(Binary))).
 
 -endif.
