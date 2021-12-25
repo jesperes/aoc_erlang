@@ -16,7 +16,7 @@ info() ->
                 year = 2021,
                 day = 23,
                 name = "Amphipod",
-                expected = {13520, 0},
+                expected = {13520, 48708},
                 has_input_file = true}.
 
 -type input_type() :: any().
@@ -25,7 +25,7 @@ info() ->
 offset_to_coord(Offset, Width) ->
     {Offset rem (Width + 1), Offset div (Width + 1)}.
 
-goal() ->
+goal1() ->
     #{{3, 2} => $A,
       {3, 3} => $A,
       {5, 2} => $B,
@@ -34,6 +34,24 @@ goal() ->
       {7, 3} => $C,
       {9, 2} => $D,
       {9, 3} => $D}.
+
+goal2() ->
+    #{{3, 2} => $A,
+      {3, 3} => $A,
+      {3, 4} => $A,
+      {3, 5} => $A,
+      {5, 2} => $B,
+      {5, 3} => $B,
+      {5, 4} => $B,
+      {5, 5} => $B,
+      {7, 2} => $C,
+      {7, 3} => $C,
+      {7, 4} => $C,
+      {7, 5} => $C,
+      {9, 2} => $D,
+      {9, 3} => $D,
+      {9, 4} => $D,
+      {9, 5} => $D}.
 
 % Note that this requires slightly modified input file, since the downloaded
 % input is not strictly rectangular.
@@ -57,37 +75,36 @@ parse(Binary) ->
 
 -spec solve1(Input :: input_type()) -> result_type().
 solve1(Amphipods) ->
-    find_shortest_path(Amphipods).
+    find_shortest_path(Amphipods, goal1()).
 
 -spec solve2(Input :: input_type()) -> result_type().
-solve2(_Amphipods) ->
-    0.
-    % ShiftDown =
-    %     lists:foldl(fun ({{X, Y}, Type}, Acc) when Y == 3 ->
-    %                         maps:put({X, 5}, Type, Acc);
-    %                     ({Coord, Type}, Acc) ->
-    %                         maps:put(Coord, Type, Acc)
-    %                 end,
-    %                 maps:to_list(Amphipods)),
-    % NewAmphipods =
-    %     #{{3, 3} => $D,
-    %       {3, 4} => $D,
-    %       {5, 3} => $C,
-    %       {5, 4} => $B,
-    %       {7, 3} => $B,
-    %       {7, 4} => $A,
-    %       {9, 3} => $A,
-    %       {9, 4} => $C},
-    % find_shortest_path(maps:merge(ShiftDown, NewAmphipods)).
+solve2(Amphipods) ->
+    AmphipodsPart2 =
+        maps:merge(#{{3, 3} => $D,
+                     {3, 4} => $D,
+                     {5, 3} => $C,
+                     {5, 4} => $B,
+                     {7, 3} => $B,
+                     {7, 4} => $A,
+                     {9, 3} => $A,
+                     {9, 4} => $C},
+                   lists:foldl(fun ({{X, Y}, Type}, Acc) when Y == 3 ->
+                                       maps:put({X, 5}, Type, Acc);
+                                   ({Coord, Type}, Acc) ->
+                                       maps:put(Coord, Type, Acc)
+                               end,
+                               #{},
+                               maps:to_list(Amphipods))),
+    find_shortest_path(AmphipodsPart2, goal2()).
 
-find_shortest_path(Amphipods) ->
+find_shortest_path(Amphipods, Goal) ->
     Gs = #{Amphipods => 0},
     Fs = gb_sets:singleton({0, Amphipods}),
-    find_shortest_path(Gs, Fs).
+    find_shortest_path(Gs, Fs, Goal).
 
-find_shortest_path(Gs, Fs) ->
-    {{Cost, Amphipods}, Fs0} = gb_sets:take_smallest(Fs),
-    case Amphipods =:= goal() of
+find_shortest_path(Gs, Fs, Goal) ->
+    {{Cost, Amphipods} = _Node, Fs0} = gb_sets:take_smallest(Fs),
+    case Amphipods =:= Goal of
         true ->
             Cost;
         false ->
@@ -107,7 +124,7 @@ find_shortest_path(Gs, Fs) ->
                             end,
                             {Gs, Fs0},
                             neighbors(Amphipods)),
-            find_shortest_path(NewGs, NewFs)
+            find_shortest_path(NewGs, NewFs, Goal)
     end.
 
 % Estimate distance to goal by counting steps for all amphipods
@@ -189,16 +206,38 @@ is_free(_, _, _) ->
     [].
 
 % Is the destination room for the given amphipod type "free", i.e. empty or only
-% contains amphipods of the same type. Return the Y coord of the free slot , or false.
+% contains amphipods of the same type. Return the Y coord of the free slot, or false.
 is_dest_free(Type, Amphipods) ->
     FinalX = final_dest(Type),
-    case {maps:get({FinalX, 2}, Amphipods, empty), maps:get({FinalX, 3}, Amphipods, empty)} of
-        {empty, empty} ->
-            3;
-        {empty, T} when T == Type ->
-            2;
-        _ ->
-            false
+    case maps:size(Amphipods) of
+        N when N =< 8 ->
+            % Part 1
+            case {maps:get({FinalX, 2}, Amphipods, empty), maps:get({FinalX, 3}, Amphipods, empty)}
+            of
+                {empty, empty} ->
+                    3;
+                {empty, T} when T == Type ->
+                    2;
+                _ ->
+                    false
+            end;
+        N when N =< 16 ->
+            case {maps:get({FinalX, 2}, Amphipods, empty),
+                  maps:get({FinalX, 3}, Amphipods, empty),
+                  maps:get({FinalX, 4}, Amphipods, empty),
+                  maps:get({FinalX, 5}, Amphipods, empty)}
+            of
+                {empty, empty, empty, empty} ->
+                    5;
+                {empty, empty, empty, T} when T =:= Type ->
+                    4;
+                {empty, empty, T, T} when T =:= Type ->
+                    3;
+                {empty, T, T, T} when T =:= Type ->
+                    2;
+                _ ->
+                    false
+            end
     end.
 
 final_dest($A) ->
@@ -243,10 +282,14 @@ cost_test() ->
     ?assertEqual(7000, cost({4, 1}, {9, 3}, $D)),
     ?assertEqual(2000, cost({3, 2}, {4, 1}, $D)).
 
-% ex1_test() ->
-%     Binary =
-%         <<"#############\n#...........#\n###B#C#B#D###\n..#A#D#C#A#..\n..######"
-%           "###..">>,
-%     ?assertEqual(12521, solve1(parse(Binary))).
+test_input() ->
+    <<"#############\n#...........#\n###B#C#B#D###\n..#A#D#C#A#..\n..######"
+      "###..">>.
+
+ex1_test() ->
+    ?assertEqual(12521, solve1(parse(test_input()))).
+
+ex2_test_() ->
+    {timeout, 3600, fun() -> ?assertEqual(44169, solve2(parse(test_input()))) end}.
 
 -endif.
