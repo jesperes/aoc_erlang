@@ -38,24 +38,40 @@ parse(Binary) ->
 
 -spec solve1(Input :: input_type()) -> result_type().
 solve1(Prog) ->
-    alu_check(Prog),
-    alu_check2(Prog),
-    % Segments = split_program(Prog),
-    % lists:foreach(fun({I, S}) ->
-    %                  ok =
-    %                      file:write_file(
-    %                          io_lib:format("segment-~w.eterm", [I]), io_lib:format("~p.~n", [S]))
-    %               end,
-    %               lists:zip(
-    %                   lists:seq(1, length(Segments)), Segments)),
-
+    Segments = split_program(Prog, 0),
     % lists:foreach(fun(S) ->
-    %                  % io:format(standard_error, "~p~n", [S]),
-    %                  io:format(standard_error, "~p~n", [segm(S)])
+    %                  Params = segm(S),
+    %                  io:format(standard_error, "~p~n", [Params])
     %               end,
     %               Segments),
-
+    alu_check(Prog),
+    alu_check2(Prog),
+    solve_dfs(Segments, 0, #{}, [], {inf, []}),
     0.
+
+solve_dfs([], 0, Cache, Ws, {0, MaxWs}) ->
+    {Cache, {0, max(MaxWs, Ws)}};
+solve_dfs([], Z, Cache, Ws, {BestZ, MaxWs}) ->
+    ?_if(Z < BestZ,
+         begin
+             erlang:display({Ws, BestZ, MaxWs}),
+             {Cache, {Z, Ws}}
+         end,
+         {Cache, {BestZ, MaxWs}});
+solve_dfs([{Sid, S} | Segments], Z, Cache, Ws, MaxWs) ->
+    lists:foldl(fun(W, {CacheIn, MaxWsIn}) ->
+                   case maps:get({Sid, W, Z}, CacheIn, undef) of
+                       undef ->
+                           Z1 = run_alu_segment(S, W, Z),
+                           Cache0 = maps:put({Sid, W, Z}, Z1, CacheIn),
+                           solve_dfs(Segments, Z1, Cache0, Ws ++ [W], MaxWsIn);
+                       _ -> {CacheIn, MaxWsIn}
+                   end
+                end,
+                {Cache, MaxWs},
+                lists:seq(9, 1, -1)).
+
+% [8,9,9,1,3,9,4,9,2,9,3,9,8,9]
 
 -spec solve2(Input :: input_type()) -> result_type().
 solve2(_Input) ->
@@ -83,20 +99,22 @@ segm([{mul, x, 0},
 
 segment(Z, W, A, B, C) ->
     Z0 = Z div A,
-    X0 = Z rem 26 + B,
-    X1 = ?_if(X0 == W, 1, 0),
-    X2 = ?_if(X1 == 0, 1, 0),
-    Z0 * (25 * X2 + 1) + (W + C) * X2.
+    case Z rem 26 + B /= W of
+        true ->
+            Z0 * 26 + (W + C);
+        false ->
+            Z0
+    end.
 
 %% --------------------------------------------------------------------------
 %% Utilities
 %% --------------------------------------------------------------------------
 
-split_program([]) ->
+split_program([], _) ->
     [];
-split_program(Prog) ->
+split_program(Prog, N) ->
     {Segment, Rest} = split_one_segment(Prog, []),
-    [Segment | split_program(Rest)].
+    [{N, Segment} | split_program(Rest, N + 1)].
 
 split_one_segment([{add, z, _} = Instr | Rest], Acc) ->
     {lists:reverse([Instr | Acc]), Rest};
@@ -119,23 +137,23 @@ int_to_digit_list(Num) ->
     lists:map(fun(N) -> N - $0 end, integer_to_list(Num)).
 
 run_full_alu_program(Prog, InputNum) ->
-    Segments = split_program(Prog),
+    Segments = split_program(Prog, 0),
     IntList = int_to_digit_list(InputNum),
-    lists:foldl(fun({Digit, Segment}, ZAcc) -> run_alu_segment(Segment, Digit, ZAcc) end,
+    lists:foldl(fun({Digit, {_, Segment}}, ZAcc) -> run_alu_segment(Segment, Digit, ZAcc) end,
                 0,
                 lists:zip(IntList, Segments)).
 
 run_full_alu_program2(Prog, InputNum) ->
-    Segments = split_program(Prog),
+    Segments = split_program(Prog, 0),
     IntList = int_to_digit_list(InputNum),
-    lists:foldl(fun({Digit, Segment}, ZAcc) ->
-                    {A, B, C} = segm(Segment),
-                    % ?debugFmt("~p", [{A, B, C}]),
-                    segment(ZAcc, Digit, A, B, C)
+    lists:foldl(fun({Digit, {_, Segment}}, ZAcc) ->
+                   {A, B, C} = segm(Segment),
+                   ZAccOut = segment(ZAcc, Digit, A, B, C),
+                   % io:format(standard_error, "~p + ~p -> ~p~n", [{A, B, C}, Digit, ZAccOut]),
+                   ZAccOut
                 end,
                 0,
                 lists:zip(IntList, Segments)).
-
 
 opfuns(add) ->
     fun erlang:'+'/2;
