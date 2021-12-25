@@ -57,10 +57,10 @@ parse(Binary) ->
 
 -spec solve1(Input :: input_type()) -> result_type().
 solve1({Walls, Letters}) ->
-    io:format(standard_error,
-              "~s~n",
-              [grid:to_str(
-                   maps:merge(Walls, Letters))]),
+    % io:format(standard_error,
+    %           "~s~n",
+    %           [grid:to_str(
+    %                maps:merge(Walls, Letters))]),
     Explored = sets:new(),
     Frontier = gb_sets:from_list([{0, Letters}]),
     find_shortest_path(Explored, Frontier, Walls),
