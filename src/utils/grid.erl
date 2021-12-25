@@ -20,7 +20,7 @@ to_str(Grid) ->
            MaxX = lists:max(XCoords),
            MaxY = lists:max(YCoords),
            header(MinX, MaxX)
-           ++ [left_margin(Y) ++ [maps:get({X, Y}, Grid, 32) || X <- lists:seq(MinX, MaxX)] ++ "\n"
+           ++ [left_margin(Y) ++ [maps:get({X, Y}, Grid, $.) || X <- lists:seq(MinX, MaxX)] ++ "\n"
                || Y <- lists:seq(MinY, MaxY)];
        true ->
            io_lib:format("Grid is empty: ~p", [Grid])

@@ -20,14 +20,6 @@ info() ->
 -type input_type() :: any().
 -type result_type() :: integer().
 
--define(_if(Condition, True, False),
-        case Condition of
-            true ->
-                True;
-            false ->
-                False
-        end).
-
 offset_to_coord(Offset, Width) ->
     {Offset rem (Width + 1), Offset div (Width + 1)}.
 

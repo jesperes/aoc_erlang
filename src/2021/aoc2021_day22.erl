@@ -22,14 +22,6 @@ info() ->
 -type input_type() :: integer().
 -type result_type() :: integer().
 
--define(_if(Condition, True, False),
-        case Condition of
-            true ->
-                True;
-            false ->
-                False
-        end).
-
 -spec parse(Binary :: binary()) -> input_type().
 parse(Binary) ->
     F = fun list_to_integer/1,
