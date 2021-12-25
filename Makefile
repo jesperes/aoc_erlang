@@ -10,3 +10,6 @@ latest:
 
 clean:
 	rebar3 clean
+
+run2021:
+	rebar3 escriptize && _build/default/bin/aoc aoc2021_.*
