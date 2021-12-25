@@ -19,7 +19,7 @@ info() ->
                 expected = {13520, 48708},
                 has_input_file = true}.
 
--type input_type() :: any().
+-type input_type() :: map().
 -type result_type() :: integer().
 
 offset_to_coord(Offset, Width) ->

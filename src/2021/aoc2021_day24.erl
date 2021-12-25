@@ -19,7 +19,7 @@ info() ->
                 expected = {0, 0},
                 has_input_file = true}.
 
--type input_type() :: map().
+-type input_type() :: any().
 -type result_type() :: integer().
 
 -spec parse(Binary :: binary()) -> input_type().

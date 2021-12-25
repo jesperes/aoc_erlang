@@ -19,7 +19,7 @@ info() ->
                 expected = {601104, 1262883317822267},
                 has_input_file = true}.
 
--type input_type() :: integer().
+-type input_type() :: any().
 -type result_type() :: integer().
 
 -spec parse(Binary :: binary()) -> input_type().
