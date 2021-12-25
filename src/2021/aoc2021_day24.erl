@@ -18,12 +18,13 @@ info() ->
                 has_input_file = true,
                 use_one_solver_fun = true}.
 
--type input_type() :: any().
--type result_type() :: integer().
+-type prog() :: [{Idx :: integer(), Instr :: tuple()}].
+-type input_type() :: prog().
+-type result_type() :: {integer(), integer()}.
 
 % Stack machine state
 -record(state,
-        {dig = 0 :: integer,
+        {dig = 0 :: integer(),
          stack = [] :: list(),
          digits = #{} :: map(),
          push = false :: boolean(),
@@ -49,13 +50,6 @@ parse(Binary) ->
 solve(Prog) ->
     #state{digits = Digits} = lists:foldl(fun stack_machine/2, #state{}, Prog),
     digits_to_answer(Digits).
-
-digits_to_answer(Digits) ->
-    List = maps:to_list(Digits),
-    SortedList = lists:sort(List),
-    Vals = lists:map(fun({_, V}) -> V end, SortedList),
-    {P2, P1} = lists:unzip(Vals),
-    {intlist_to_int(P1), intlist_to_int(P2)}.
 
 % The stack-machine trick was taken from
 % https://www.reddit.com/r/adventofcode/comments/rnejv5/comment/hpv7g7j/
@@ -92,6 +86,15 @@ stack_machine({I, _},
                 stack = Stack};
 stack_machine(_, State) ->
     State.
+
+%% Helper functionsd
+
+digits_to_answer(Digits) ->
+    List = maps:to_list(Digits),
+    SortedList = lists:sort(List),
+    Vals = lists:map(fun({_, V}) -> V end, SortedList),
+    {P2, P1} = lists:unzip(Vals),
+    {intlist_to_int(P1), intlist_to_int(P2)}.
 
 intlist_to_int(List) ->
     list_to_integer(lists:map(fun(N) -> N + $0 end, List)).
