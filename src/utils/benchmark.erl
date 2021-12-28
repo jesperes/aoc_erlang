@@ -5,7 +5,8 @@
 -include_lib("eunit/include/eunit.hrl").
 
 benchmark(Msg, Fun) ->
-    Reps = 100,
+    % io:format(standard_error, "~s: start~n", [Msg]),
+    Reps = 10,
     Total =
         lists:foldl(fun(_, Sum) ->
                        {Time, _} = timer:tc(Fun),
@@ -14,7 +15,7 @@ benchmark(Msg, Fun) ->
                     0,
                     lists:seq(1, Reps)),
     UsecsPerIter = Total / Reps,
-    ?debugFmt("~s: average=~p", [Msg, UsecsPerIter]),
+    io:format(standard_error, "~s: average=~p~n", [Msg, UsecsPerIter]),
     UsecsPerIter.
 
 -ifdef(TEST).
@@ -45,5 +46,40 @@ binary_split_lines_2_test() ->
                            string:tokens(
                                string:trim(binary_to_list(Binary)), "\n"))
               end).
+
+map_sext_encoding_test_() ->
+    Size = 1000,
+    Runs =
+        [{map_tuple, fun(X, Y) -> {X, Y} end, fun({X, Y}) -> {X, Y} end},
+         {map_list, fun(X, Y) -> [X, Y] end, fun([X, Y]) -> {X, Y} end},
+         {map_sext, fun(X, Y) -> sext:encode({X, Y}) end, fun(Sext) -> sext:decode(Sext) end},
+         % {map_binary4, fun(X, Y) -> <<X:4, Y:4>> end, fun(<<X:4, Y:4>>) -> {X, Y} end},
+         % {map_binary8, fun(X, Y) -> <<X:8, Y:8>> end, fun(<<X:8, Y:8>>) -> {X, Y} end},
+         {map_binary12, fun(X, Y) -> <<X:12, Y:12>> end, fun(<<X:12, Y:12>>) -> {X, Y} end},
+         {map_binary16, fun(X, Y) -> <<X:16, Y:16>> end, fun(<<X:16, Y:16>>) -> {X, Y} end},
+         {map_binary32, fun(X, Y) -> <<X:32, Y:32>> end, fun(<<X:32, Y:32>>) -> {X, Y} end}],
+
+    Tuples = [{X, Y} || X <- lists:seq(0, Size - 1), Y <- lists:seq(0, Size - 1)],
+    ExpectedResult = lists:foldl(fun({X, Y}, Acc) -> X * Y + Acc end, 0, Tuples),
+    lists:map(fun({Type, EncodeFun, DecodeFun}) ->
+                 {timeout,
+                  3600,
+                  {atom_to_list(Type),
+                   fun() ->
+                      Coords =
+                          [EncodeFun(X, Y)
+                           || X <- lists:seq(0, Size - 1), Y <- lists:seq(0, Size - 1)],
+                      Map = lists:foldl(fun(Coord, Map) ->
+                                           {X, Y} = DecodeFun(Coord),
+                                           maps:put(Coord, X * Y, Map)
+                                        end,
+                                        #{},
+                                        Coords),
+                      MapResult =
+                          lists:foldl(fun(Coord, Acc) -> Acc + maps:get(Coord, Map) end, 0, Coords),
+                      ?assertEqual(ExpectedResult, MapResult)
+                   end}}
+              end,
+              Runs).
 
 -endif.
