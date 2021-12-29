@@ -52,12 +52,8 @@ map_sext_encoding_test_() ->
     Runs =
         [{map_tuple, fun(X, Y) -> {X, Y} end, fun({X, Y}) -> {X, Y} end},
          {map_list, fun(X, Y) -> [X, Y] end, fun([X, Y]) -> {X, Y} end},
-         {map_sext, fun(X, Y) -> sext:encode({X, Y}) end, fun(Sext) -> sext:decode(Sext) end},
-         % {map_binary4, fun(X, Y) -> <<X:4, Y:4>> end, fun(<<X:4, Y:4>>) -> {X, Y} end},
-         % {map_binary8, fun(X, Y) -> <<X:8, Y:8>> end, fun(<<X:8, Y:8>>) -> {X, Y} end},
-         {map_binary12, fun(X, Y) -> <<X:12, Y:12>> end, fun(<<X:12, Y:12>>) -> {X, Y} end},
-         {map_binary16, fun(X, Y) -> <<X:16, Y:16>> end, fun(<<X:16, Y:16>>) -> {X, Y} end},
-         {map_binary32, fun(X, Y) -> <<X:32, Y:32>> end, fun(<<X:32, Y:32>>) -> {X, Y} end}],
+         {map_bits, fun(X, Y) -> (X bsl 16) bor Y end, fun(P) -> {P bsr 16, P band 16#ffff} end},
+         {map_binary16, fun(X, Y) -> <<X:16, Y:16>> end, fun(<<X:16, Y:16>>) -> {X, Y} end}],
 
     Tuples = [{X, Y} || X <- lists:seq(0, Size - 1), Y <- lists:seq(0, Size - 1)],
     ExpectedResult = lists:foldl(fun({X, Y}, Acc) -> X * Y + Acc end, 0, Tuples),

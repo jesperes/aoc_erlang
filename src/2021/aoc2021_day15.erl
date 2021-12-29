@@ -71,39 +71,44 @@ find(Gs, Fs, Grid, Tiles) ->
     Height = ?HEIGHT * Tiles,
     {F, Fs0} = gb_sets:take_smallest(Fs),
     {Dist, Curr} = ?UNPACK_F(F),
+
     case Curr of
         {X, Y} when ?IS_GOAL(X, Y, Tiles) ->
             Dist;
         {X, Y} ->
+            Nbrs =
+                lists:filtermap(fun({Dx, Dy}) ->
+                                   case {X + Dx, Y + Dy} of
+                                       {Xa, Ya}
+                                           when Xa >= 0
+                                                andalso Xa < Width
+                                                andalso Ya >= 0
+                                                andalso Ya < Height ->
+                                           {true, {Xa, Ya}};
+                                       _ -> false
+                                   end
+                                end,
+                                ?DELTAS),
+
             PackedXY = ?PACK_COORD(X, Y),
             {NewGs, NewFs} =
-                lists:foldl(fun ({Xa, Ya} = Coord, {GsIn, FsIn} = Acc)
-                                    when Xa >= 0
-                                         andalso Xa < Width
-                                         andalso Ya >= 0
-                                         andalso Ya < Height ->
-                                    PackedCoord = ?PACK_COORD(Xa, Ya),
-                                    MaybeNewScore =
-                                        maps:get(PackedXY, GsIn) + edge_weight(Coord, Grid),
-                                    case MaybeNewScore < maps:get(PackedCoord, GsIn, infinity) of
-                                        true ->
-                                            %% This path is better than previously known
-                                            BetterScore = MaybeNewScore,
-                                            GsOut = maps:put(PackedCoord, BetterScore, GsIn),
-                                            NewDist =
-                                                BetterScore
-                                                + lower_bound_dist_to_goal(Coord, Tiles),
-                                            FsOut = gb_sets:add(?PACK_F(NewDist, Xa, Ya), FsIn),
-                                            {GsOut, FsOut};
-                                        false ->
-                                            Acc
-                                    end;
-                                (_, Acc) ->
-                                    %% Neighbor out of range
-                                    Acc
+                lists:foldl(fun({Xa, Ya} = Coord, {GsIn, FsIn} = Acc) ->
+                               PackedCoord = ?PACK_COORD(Xa, Ya),
+                               MaybeNewScore = maps:get(PackedXY, GsIn) + edge_weight(Coord, Grid),
+                               case MaybeNewScore < maps:get(PackedCoord, GsIn, infinity) of
+                                   true ->
+                                       %% This path is better than previously known
+                                       BetterScore = MaybeNewScore,
+                                       GsOut = maps:put(PackedCoord, BetterScore, GsIn),
+                                       NewDist =
+                                           BetterScore + lower_bound_dist_to_goal(Coord, Tiles),
+                                       FsOut = gb_sets:add(?PACK_F(NewDist, Xa, Ya), FsIn),
+                                       {GsOut, FsOut};
+                                   false -> Acc
+                               end
                             end,
                             {Gs, Fs0},
-                            lists:map(fun({Dx, Dy}) -> {X + Dx, Y + Dy} end, ?DELTAS)),
+                            Nbrs),
             find(NewGs, NewFs, Grid, Tiles)
     end.
 
