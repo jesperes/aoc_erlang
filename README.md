@@ -17,3 +17,4 @@ If there are locally modified solutions, only those will be executed.
 * 2018: complete
 * 2019: complete
 * 2020: complete
+* 2021: complete
