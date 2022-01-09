@@ -62,7 +62,7 @@ find_all_paths('end', _G, _State, NumPaths, _Fun) ->
     NumPaths + 1;
 find_all_paths(Node, G, State, NumPaths, Fun) ->
     CaveSize = cave_size(Node),
-    case {CaveSize, Fun(Node, CaveSize, State)} of
+    case {CaveSize, Fun(CaveSize, Node, State)} of
         {small, false} ->
             NumPaths;
         {small, true} ->
@@ -78,32 +78,28 @@ find_all_paths(Node, G, State, NumPaths, Fun) ->
     end.
 
 %% Functions to determine whether we are allow to visit small caves.
-allow_small_cave_visit(_, large, _) ->
+allow_small_cave_visit(large, _, _) ->
     true;
-allow_small_cave_visit(Node, _, Map) ->
+allow_small_cave_visit(_, Node, Map) ->
     not maps:is_key(Node, Map).
 
-allow_small_cave_visit2(_, large, _) ->
+allow_small_cave_visit2(large, _, _) ->
     true;
-allow_small_cave_visit2(Node, _, Map) ->
+allow_small_cave_visit2(_, Node, Map) ->
     case max_value(Map) of
         Max when Max >= 2 ->
-            case maps:get(Node, Map, 0) of
-                Freq when Freq >= 1 ->
-                    false;
-                _ ->
-                    true
-            end;
+            maps:get(Node, Map, 0) < 1;
         _ ->
             true
     end.
 
 max_value(Map) ->
-    case maps:values(Map) of
-        [] ->
+    case maps:size(Map) of
+        0 ->
             0;
-        Values ->
-            lists:max(Values)
+        _ ->
+            lists:max(
+                maps:values(Map))
     end.
 
 btoa(B) when is_binary(B) ->
