@@ -30,7 +30,7 @@ parse(Binary) ->
         lists:foldl(fun({Offset, _}, CoordMap) ->
                        X = Offset rem LL,
                        Y = Offset div LL,
-                       maps:put({X, Y}, $1, CoordMap)
+                       maps:put({X, Y}, 1, CoordMap)
                     end,
                     #{},
                     binary:matches(Rest, <<"#">>)),
@@ -70,7 +70,7 @@ do_enhance({Algo, ImageMap}, N, Coords, Limits) ->
      lists:foldl(fun(Coord, Acc) ->
                     case enhance_pixel(Coord, Algo, ImageMap, N, Limits) of
                         $. -> Acc;
-                        $# -> maps:put(Coord, $1, Acc)
+                        $# -> maps:put(Coord, 1, Acc)
                     end
                  end,
                  #{},
@@ -92,19 +92,20 @@ enhance_pixel({X, Y},
          {X, Y + 1},
          {X + 1, Y + 1}],
     IsAlgo0Set = Algo0 =:= $#,
-    Str = lists:map(fun ({X0, Y0} = Coord)
-                            when X0 >= MinX
-                                 andalso X0 =< MaxX
-                                 andalso Y0 >= MinY
-                                 andalso Y0 =< MaxY ->
-                            maps:get(Coord, ImageMap, $0);
-                        (_) when N rem 2 == 1 andalso IsAlgo0Set ->
-                            $1;
-                        (_) ->
-                            $0
-                    end,
-                    Nbrs),
-    binary:at(Algo, list_to_integer(Str, 2)).
+    Int = lists:foldl(fun ({X0, Y0} = Coord, Acc)
+                              when X0 >= MinX
+                                   andalso X0 =< MaxX
+                                   andalso Y0 >= MinY
+                                   andalso Y0 =< MaxY ->
+                              Acc bsl 1 bor maps:get(Coord, ImageMap, 0);
+                          (_, Acc) when N rem 2 == 1 andalso IsAlgo0Set ->
+                              Acc bsl 1 bor 1;
+                          (_, Acc) ->
+                              Acc bsl 1
+                      end,
+                      0,
+                      Nbrs),
+    binary:at(Algo, Int).
 
 %% Tests
 -ifdef(TEST).
