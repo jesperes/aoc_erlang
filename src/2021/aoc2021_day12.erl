@@ -47,32 +47,32 @@ add_edge(G, X, Y) ->
 
 -spec solve1(Input :: input_type()) -> result_type().
 solve1(G) ->
-    find_all_paths(G, start, #{}, 0, fun allow_small_cave_visit/3).
+    find_all_paths(start, G, #{}, 0, fun allow_small_cave_visit/3).
 
 -spec solve2(Input :: input_type()) -> result_type().
 solve2(G) ->
-    find_all_paths(G, start, #{}, 0, fun allow_small_cave_visit2/3).
+    find_all_paths(start, G, #{}, 0, fun allow_small_cave_visit2/3).
 
 cave_size(Name) when Name > '_' ->
     small;
 cave_size(_) ->
     large.
 
-find_all_paths(_, 'end', _State, NumPaths, _Fun) ->
+find_all_paths('end', _G, _State, NumPaths, _Fun) ->
     NumPaths + 1;
-find_all_paths(G, Node, State, NumPaths, Fun) ->
+find_all_paths(Node, G, State, NumPaths, Fun) ->
     CaveSize = cave_size(Node),
-    case {Node, CaveSize, Fun(Node, CaveSize, State)} of
-        {_, small, false} ->
+    case {CaveSize, Fun(Node, CaveSize, State)} of
+        {small, false} ->
             NumPaths;
-        {_, small, true} ->
+        {small, true} ->
             %% For small caves, we update the freqency map
             State0 = maps:update_with(Node, fun(Old) -> Old + 1 end, 1, State),
-            lists:foldl(fun(Nbr, Acc) -> find_all_paths(G, Nbr, State0, Acc, Fun) end,
+            lists:foldl(fun(Nbr, Acc) -> find_all_paths(Nbr, G, State0, Acc, Fun) end,
                         NumPaths,
                         digraph:out_neighbours(G, Node));
-        {_, large, _} ->
-            lists:foldl(fun(Nbr, Acc) -> find_all_paths(G, Nbr, State, Acc, Fun) end,
+        {large, _} ->
+            lists:foldl(fun(Nbr, Acc) -> find_all_paths(Nbr, G, State, Acc, Fun) end,
                         NumPaths,
                         digraph:out_neighbours(G, Node))
     end.
